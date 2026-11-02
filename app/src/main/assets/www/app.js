@@ -157,5 +157,5 @@ window.addEventListener('storage',e=>{if(e.key===STORAGE&&e.newValue){try{const 
 window.nativeStatusChanged=()=>{status();if(native()&&typeof nativeStatus.enabled==='boolean'&&state.settings.enabled!==nativeStatus.enabled){state.settings.enabled=nativeStatus.enabled;save();render();}else if(page==='ayarlar')render();};
 window.addEventListener('beforeunload',()=>{clearInterval(timerInterval);});
 hydrate();syncNative();window.KampCloud?.init({getState:()=>state,applyRemote:remote=>{const merged=C.mergeStates(state,remote);state={...state,...C.syncPayload(merged)};persistLocal();syncNative();render();},render:()=>refreshCloud()});persistLocal();if(native()&&state.settings.enabled){status();if(!nativeStatus.serviceRunning)state.settings.enabled=false;}navigate();
-if('serviceWorker' in navigator&&!native()&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+if('serviceWorker' in navigator&&!native()&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(e=>console.warn('Service worker registration failed',e));}
 })();
