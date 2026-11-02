@@ -18,6 +18,10 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   build:
     name: Debug APK
