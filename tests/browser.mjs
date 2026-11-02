@@ -41,4 +41,4 @@ else{
 
 await page.goto('http://127.0.0.1:3000/#bulut');await page.waitForSelector('#firebase-config-form',{state:'attached'});await page.locator('#cloud-config-section summary').click();assert.equal(await page.locator('[name="projectId"]').inputValue(),'sinavkam');assert.equal(await page.locator('[name="appId"]').getAttribute('required'),null);await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0);});await page.screenshot({path:'test-results/cloud-mobile.png',fullPage:true});
 assert.deepEqual(errors,[]);console.log('PASS: desktop + 390px mobile, navigation, tasks persistence, calendar/custom exam, timer, PDF filters, 12-question quiz, settings, elective toggle, offline precache ('+cached+' assets), no JS errors.');
-await browser.close();
+await browser.close();testServer?.kill();
