@@ -19,43 +19,17 @@ jobs:
       - run: npm ci
       - name: Test Firestore isolation and validation
         id: rules
-        continue-on-error: true
         run: set -o pipefail; npm run test:rules 2>&1 | tee firestore-test.log
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - name: Test real Firebase SDK against local emulators
         id: cloud
-        continue-on-error: true
         run: set -o pipefail; PLAYWRIGHT_CHROMIUM=system npm run test:cloud 2>&1 | tee cloud-test.log
       - name: Test offline application and mobile layout
         id: browser
         run: set -o pipefail; timeout 120s env PLAYWRIGHT_CHROMIUM=system npm run test:browser 2>&1 | tee browser-test.log
-      - name: Annotate Firestore failure for retrieval
-        if: always() && steps.rules.outcome == 'failure'
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          text=Path('firestore-test.log').read_text(errors='replace')[-60000:]
-          print('::error title=Firestore test diagnostics::'+text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
-          PY
-      - name: Annotate cloud failure for retrieval
-        if: always() && steps.cloud.outcome == 'failure'
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          text=Path('cloud-test.log').read_text(errors='replace')[-60000:]
-          print('::error title=Cloud test diagnostics::'+text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
-          PY
-      - name: Annotate browser failure for retrieval
-        if: failure() && steps.browser.outcome == 'failure'
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          text=Path('browser-test.log').read_text(errors='replace')[-3500:]
-          print('::error title=Browser test diagnostics::'+text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
-          PY
       - name: Preserve test diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: firebase-test-diagnostics
@@ -68,9 +42,6 @@ jobs:
             auth-debug.log
             test-results/
           if-no-files-found: ignore
-      - name: Enforce Firebase and browser test results
-        if: steps.rules.outcome == 'failure' || steps.cloud.outcome == 'failure'
-        run: exit 1
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -108,9 +79,9 @@ jobs:
           test -s artifacts/Sinav-Kampi.apk
           unzip -t artifacts/Sinav-Kampi.apk
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(firebase.js|cloud-ui.js|index.html)'
-          sha256sum artifacts/Sinav-Kampi.apk
+          sha256sum artifacts/Sinav-Kampi.apk | tee apk-sha256.txt
           if gh release view v1.1.0 >/dev/null 2>&1; then
-            gh release upload v1.1.0 artifacts/Sinav-Kampi.apk --clobber
+            gh release upload v1.1.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
           else
-            gh release create v1.1.0 artifacts/Sinav-Kampi.apk --target "$GITHUB_SHA" --title "Sınav Kampı v1.1.0 — Firebase" --notes "sinavkam Firebase projesi için e-posta/şifre girişi, isteğe bağlı bulut eşitleme ve takma adlı skor tablosu. APK debug imzalıdır; canlı Firebase için proje sahibinin Authentication Email/Password, Firestore ve firestore.rules kurulumunu tamamlaması gerekir. Ayrıntılar: FIREBASE.md."
+            gh release create v1.1.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.1.0 — Firebase" --notes "sinavkam Firebase projesi için e-posta/şifre girişi, isteğe bağlı bulut eşitleme ve takma adlı skor tablosu. APK debug imzalıdır; canlı Firebase için proje sahibinin Authentication Email/Password, Firestore ve firestore.rules kurulumunu tamamlaması gerekir. Ayrıntılar: FIREBASE.md."
           fi
