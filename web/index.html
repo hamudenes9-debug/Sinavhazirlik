@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f7f2"><meta name="description" content="6. sınıf sınav takvimin, kişisel çalışma kampın, hazırlık PDF'lerin ve deneme testlerin. İnternetsiz de çalış.">
+<title>Sınav Kampı · Hazırlık benim işim</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+<script defer src="data.js"></script><script defer src="core.js"></script><script defer src="content.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">İçeriğe geç</a>
+<aside class="sidebar">
+ <a href="#bugun" class="brand" aria-label="Sınav Kampı ana sayfa"><span class="brand-mark" data-icon="tent"></span><span>Sınav<span class="brand-second">Kampı<span class="brand-dot">.</span></span></span></a>
+ <div class="workspace-label">KİŞİSEL ÇALIŞMA ALANIN</div>
+ <nav class="desktop-nav" aria-label="Ana menü">
+  <a href="#bugun" data-nav="bugun"><span data-icon="home"></span>Bugün<span class="nav-active-dot"></span></a>
+  <a href="#takvim" data-nav="takvim"><span data-icon="calendar"></span>Sınav takvimi</a>
+  <a href="#kamp" data-nav="kamp"><span data-icon="tent"></span>Sınav kampı<span class="tiny-tag">12 GÜN</span></a>
+  <a href="#kutuphane" data-nav="kutuphane"><span data-icon="folder"></span>Hazırlık PDF’leri</a>
+  <a href="#testler" data-nav="testler"><span data-icon="check-square"></span>Deneme & test</a>
+ </nav>
+ <div class="sidebar-bottom"><div class="encouragement"><span class="small-sun" data-icon="sun"></span><strong>Küçük adımlar,<br>büyük ilerleme.</strong><p>Her gün biraz daha iyisi.<br>Birlikte hazırlanacağız.</p><div class="mini-hills"></div></div>
+ <a href="#ayarlar" data-nav="ayarlar" class="settings-link"><span data-icon="settings"></span>Ayarlar & bildirimler</a>
+ <div class="profile"><span class="avatar">6</span><div><strong>6. sınıf kampçısı</strong><span>2026–2027 · 1. dönem</span></div><span class="online-dot"></span></div></div>
+</aside>
+<div class="app-shell">
+ <header class="topbar"><div class="breadcrumb">ÇALIŞMA ALANIM <span>/</span> <strong id="breadcrumb-page">BUGÜN</strong></div><a class="mobile-brand" href="#bugun"><span data-icon="tent"></span>Sınav Kampı<span>.</span></a><div class="top-actions"><span class="offline-pill"><i></i> Çevrimdışı hazır</span><button class="icon-btn" data-action="notifications" aria-label="Bildirim ayarları"><span data-icon="bell"></span><i id="notification-dot"></i></button><a href="#ayarlar" class="top-avatar" aria-label="Profil ve ayarlar">6</a></div></header>
+ <main id="main" tabindex="-1"></main>
+ <footer class="app-footer"><span data-icon="shield"></span> Senin takvimin. Senin ilerlemen. Verilerin bu cihazda kalır.</footer>
+</div>
+<nav class="bottom-nav" aria-label="Mobil menü"><a href="#bugun" data-nav="bugun"><span data-icon="home"></span><span>Bugün</span></a><a href="#takvim" data-nav="takvim"><span data-icon="calendar"></span><span>Takvim</span></a><a href="#kamp" data-nav="kamp"><span data-icon="tent"></span><span>Kamp</span></a><a href="#kutuphane" data-nav="kutuphane"><span data-icon="folder"></span><span>PDF’ler</span></a><a href="#testler" data-nav="testler"><span data-icon="check-square"></span><span>Testler</span></a></nav>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="modal"><div id="modal-content"></div></dialog>
+<input type="file" id="import-file" accept="application/json,.json" hidden>
+</body></html>

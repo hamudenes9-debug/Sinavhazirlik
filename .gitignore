@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.gradle/
+local.properties
+.idea/
+*.iml
+app/build/
+build/
+.venv/
+__pycache__/
+*.keystore
+*.jks
+/artifacts/
+/test-results/
