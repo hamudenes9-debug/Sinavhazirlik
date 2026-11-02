@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "547780044422",
+    "project_id": "sinavkam",
+    "storage_bucket": "sinavkam.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547780044422:android:6df6a87302e490c644d307",
+        "android_client_info": {
+          "package_name": "Com.company.sinavhazirlik"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "547780044422-pqhef0a0j976ad7ltvg5r44kl8nauksk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB253AtePagVhGLnEC-wNNpwB3yhtiQ6Y4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "547780044422-pqhef0a0j976ad7ltvg5r44kl8nauksk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": 1
+}

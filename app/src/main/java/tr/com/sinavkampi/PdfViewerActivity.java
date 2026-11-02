@@ -43,7 +43,7 @@ public final class PdfViewerActivity extends Activity {
   executor.execute(()->{
    try{
     File dir=new File(getCacheDir(),"pdfs");dir.mkdirs();File file=new File(dir,filename);
-    try(InputStream in=getAssets().open("www/pdfs/"+filename);FileOutputStream out=new FileOutputStream(file)){in.transferTo(out);}
+    try(InputStream in=getAssets().open("www/pdfs/"+filename);FileOutputStream out=new FileOutputStream(file)){byte[] buffer=new byte[8192];int n;while((n=in.read(buffer))!=-1){out.write(buffer,0,n);}}
     descriptor=ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY);renderer=new PdfRenderer(descriptor);
     int count=renderer.getPageCount();
     for(int i=0;i<count&&alive;i++){

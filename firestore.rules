@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owner(uid) { return signedIn() && request.auth.uid == uid; }
+    function validProgress() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['progress', 'revision', 'updatedAt'])
+        && d.keys().hasAll(['progress', 'revision', 'updatedAt'])
+        && d.progress is string && d.progress.size() > 2 && d.progress.size() < 450000
+        && d.revision is int && d.revision > 0
+        && d.updatedAt == request.time
+        && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          || d.revision == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.revision + 1);
+    }
+    function validScore() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nickname', 'points', 'completed', 'correct', 'updatedAt'])
+        && d.keys().hasAll(['nickname', 'points', 'completed', 'correct', 'updatedAt'])
+        && d.nickname is string && d.nickname.size() >= 3 && d.nickname.size() <= 20
+        && d.nickname.matches('[^@<>\\r\\n\\t]{3,20}')
+        && d.points is int && d.points >= 0 && d.points <= 100000
+        && d.completed is int && d.completed >= 0 && d.completed <= 10000
+        && d.correct is int && d.correct >= 0 && d.correct <= 1000
+        && d.points == d.completed * 5 + d.correct * 10
+        && d.updatedAt == request.time;
+    }
+    // Private study records: never publicly listable or readable.
+    match /users/{uid} {
+      allow get: if owner(uid);
+      allow list: if false;
+      allow create, update: if owner(uid) && validProgress();
+      allow delete: if owner(uid);
+    }
+    // Opt-in public-to-signed-in-users nickname and practice points only.
+    // Client-generated practice scores are NOT tamper-proof or exam grades.
+    match /leaderboard/{uid} {
+      allow get, list: if signedIn();
+      allow create, update: if owner(uid) && validScore();
+      allow delete: if owner(uid);
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

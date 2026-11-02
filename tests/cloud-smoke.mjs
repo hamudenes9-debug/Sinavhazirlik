@@ -1,0 +1,8 @@
+import {chromium as pw} from '@playwright/test';import c from '@sparticuz/chromium';
+const b=await pw.launch({executablePath:await c.executablePath(),args:c.args.filter(a=>a!=='--single-process'),headless:true});
+const p=await b.newPage({viewport:{width:390,height:844},serviceWorkers:'allow'});p.on('pageerror',e=>console.log('PAGE ERROR',e.message));p.on('console',m=>{if(m.type()==='error')console.log('CONSOLE',m.text())});
+await p.goto('http://127.0.0.1:3000/#bulut');await p.waitForSelector('#firebase-config-form',{state:'attached'});await p.locator('#cloud-config-section summary').click();await p.evaluate(()=>document.fonts.ready);await p.screenshot({path:'test-results/cloud-mobile.png',fullPage:true});
+console.log('config',await p.locator('[name="projectId"]').inputValue(),'width',await p.evaluate(()=>document.documentElement.scrollWidth));
+console.log('SW',await p.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();return {scope:r?.scope,active:r?.active?.state,installing:r?.installing?.state,waiting:r?.waiting?.state,controller:!!navigator.serviceWorker.controller};}));
+console.log('register',await p.evaluate(async()=>{try{const r=await navigator.serviceWorker.register('sw.js');return {scope:r.scope,state:r.installing?.state};}catch(e){return {error:e.message,name:e.name};}}));await p.waitForTimeout(3000);console.log('SW after',await p.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();return {active:r?.active?.state,installing:r?.installing?.state,waiting:r?.waiting?.state,controller:!!navigator.serviceWorker.controller,caches:await caches.keys()};}));
+await b.close();

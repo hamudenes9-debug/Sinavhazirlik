@@ -17,3 +17,23 @@ test('all quizzes have valid answer indices and explanations',()=>{let count=0;f
 test('every bundled PDF exists and has PDF signature',()=>{assert.equal(CONTENT.resources.length,15);for(const r of CONTENT.resources){const path='web/pdfs/'+r.file;assert(existsSync(path));assert.equal(readFileSync(path).subarray(0,5).toString(),'%PDF-');}});
 test('generated content has no accidental non-Turkish placeholders',()=>{const s=JSON.stringify(CONTENT);assert(!/[\u3400-\u9fff]/.test(s));assert(!s.includes('undefined'));});
 test('calendar arithmetic crosses month/year boundaries',()=>{assert.equal(C.addDays('2026-12-31',1),'2027-01-01');assert.equal(C.daysBetween('2026-11-02','2027-01-01'),60);});
+const base={version:1,completed:{},hidden:[],customExams:[],history:[],settings:{enabled:false,quiet:false,quietStart:'22:00',quietEnd:'08:00'},focus:{remaining:1500,endAt:0}};
+test('cloud merge is commutative and idempotent for timestamped task changes',()=>{
+ const a={...base,completed:{a:true,b:false},taskUpdatedAt:{a:10,b:30}};
+ const b={...base,completed:{a:false,b:true,c:true},taskUpdatedAt:{a:20,b:25,c:15}};
+ const ab=C.mergeStates(a,b),ba=C.mergeStates(b,a);assert.deepEqual(ab.completed,ba.completed);assert.equal(ab.completed.a,false);assert.equal(ab.completed.b,false);assert.equal(ab.completed.c,true);assert.deepEqual(C.syncPayload(C.mergeStates(ab,b)),C.syncPayload(ab));
+});
+test('custom exam deletion tombstone wins over stale device; re-add works',()=>{
+ const exam={id:'custom-1',name:'Fen',subject:'fen',date:'2026-11-15',period:2,updatedAt:10};
+ const a={...base,customExams:[exam]},b={...base,deletedExams:{'custom-1':20}};
+ assert.equal(C.mergeStates(a,b).customExams.length,0);assert.equal(C.mergeStates(b,a).customExams.length,0);assert.equal(C.mergeStates({...a,customExams:[{...exam,updatedAt:30}]},b).customExams.length,1);
+});
+test('practice points count each subject best result once',()=>{
+ const s={...base,completed:{a:true,b:true,c:false},history:[{subject:'fen',score:3,total:5},{subject:'fen',score:5,total:5},{subject:'sosyal',score:4,total:6}]};assert.deepEqual(C.studyPoints(s),{points:100,completed:2,correct:9});assert.deepEqual(C.studyPoints(s),C.studyPoints({...s,history:[...s.history,{subject:'fen',score:5,total:5}]}));
+});
+test('sync payload validation rejects corrupt metadata and unsafe keys',()=>{
+ const p=C.syncPayload(base);assert(C.validateSyncPayload(p));assert(!C.validateSyncPayload({...p,taskUpdatedAt:{a:'bad'}}));assert(!C.validateSyncPayload({...p,completed:{['__proto__']:true}}));assert(!C.validateSyncPayload({...p,settings:{enabled:true}}));assert(!C.validateSyncPayload({...p,history:[{subject:'fen',date:'2026-11-02',score:1.5,total:5}]}));
+});
+test('history merge deduplicates attempts and elective visibility uses latest change',()=>{
+ const h={id:'attempt-1',subject:'fen',date:'2026-11-02',score:3,total:5,createdAt:10};const a={...base,history:[h],hidden:['x'],hiddenUpdatedAt:{x:20}},b={...base,history:[h],hidden:[],hiddenUpdatedAt:{x:10}};assert.equal(C.mergeStates(a,b).history.length,1);assert.deepEqual(C.mergeStates(a,b).hidden,['x']);assert.deepEqual(C.mergeStates(b,a).hidden,['x']);
+});

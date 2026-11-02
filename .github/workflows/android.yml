@@ -3,23 +3,40 @@ on:
   workflow_dispatch:
   push:
     branches: ['arena/**']
-    paths: ['app/**', 'web/**', 'scripts/**', '*.gradle', 'gradle/**', 'gradlew', 'package*.json', '.github/workflows/android.yml']
+    paths: ['app/**', 'web/**', 'scripts/**', '*.gradle', 'gradle/**', 'gradlew', 'package*.json', 'src/**', 'tests/**', 'firestore.rules', 'firebase.json', '.firebaserc', '.github/workflows/android.yml']
 permissions:
   contents: read
 jobs:
+  firebase-rules:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with: {distribution: temurin, java-version: '21'}
+      - uses: actions/setup-node@v5
+        with: {node-version: '22', cache: npm}
+      - run: npm ci
+      - run: npm run test:rules
+      - run: npx playwright install --with-deps chromium
+      - run: PLAYWRIGHT_CHROMIUM=system npm run test:cloud
+      - run: npm run build && PLAYWRIGHT_CHROMIUM=system npm run test:browser
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with: {distribution: temurin, java-version: '17'}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: {node-version: '22', cache: npm}
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci && npm test && npm run build
-      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Install Android SDK packages
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0'
       - run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
       - run: mkdir -p artifacts && cp app/build/outputs/apk/debug/app-debug.apk artifacts/Sinav-Kampi.apk
       - uses: actions/upload-artifact@v4

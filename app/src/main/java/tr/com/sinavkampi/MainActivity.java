@@ -14,6 +14,8 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebResourceResponse;
+import androidx.webkit.WebViewAssetLoader;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 import androidx.core.content.FileProvider;
@@ -26,12 +28,14 @@ import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity {
     private WebView web;
+    private WebViewAssetLoader assetLoader;
     private String pendingBackup;
-    private static final String HOME = "file:///android_asset/www/index.html";
+    private static final String HOME = "https://appassets.androidplatform.net/assets/www/index.html";
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setStatusBarColor(Color.rgb(246,247,242));
         getWindow().setNavigationBarColor(Color.WHITE);
+        assetLoader = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
         web = new WebView(this);
         web.setBackgroundColor(Color.rgb(246,247,242));
         setContentView(web);
@@ -44,7 +48,7 @@ public final class MainActivity extends Activity {
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setAllowFileAccess(true);
+        settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setGeolocationEnabled(false);
         settings.setMediaPlaybackRequiresUserGesture(true);
@@ -52,9 +56,10 @@ public final class MainActivity extends Activity {
         settings.setTextZoom(100);
         web.addJavascriptInterface(new Bridge(), "AndroidBridge");
         web.setWebViewClient(new WebViewClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) { return assetLoader.shouldInterceptRequest(request.getUrl()); }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
-                if ("file".equals(uri.getScheme()) && uri.getPath() != null && uri.getPath().startsWith("/android_asset/www/")) {
+                if ("https".equals(uri.getScheme()) && "appassets.androidplatform.net".equals(uri.getHost()) && uri.getPath() != null && uri.getPath().startsWith("/assets/www/")) {
                     String path = uri.getPath();
                     if (path.endsWith(".pdf")) { openPDF(path.substring(path.lastIndexOf('/')+1)); return true; }
                     return false;
@@ -97,7 +102,7 @@ public final class MainActivity extends Activity {
         if(!validPdf(file))throw new IllegalArgumentException();
         File dir=new File(getCacheDir(),"pdfs");if(!dir.exists()&&!dir.mkdirs())throw new Exception();
         File target=new File(dir,file);
-        try(InputStream in=getAssets().open("www/pdfs/"+file);OutputStream out=new FileOutputStream(target)){in.transferTo(out);}
+        try(InputStream in=getAssets().open("www/pdfs/"+file);OutputStream out=new FileOutputStream(target)){byte[] buffer=new byte[8192];int n;while((n=in.read(buffer))!=-1){out.write(buffer,0,n);}}
         return target;
     }
     public final class Bridge {
