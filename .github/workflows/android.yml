@@ -1,0 +1,96 @@
+name: APK Derle (Android)
+
+on:
+  push:
+    branches: [main, "arena/**"]
+    tags: ["v*"]
+    paths:
+      - "apk/**"
+      - "index.html"
+      - "css/**"
+      - "js/**"
+      - "pdf/**"
+      - "icons/**"
+      - "sw.js"
+      - "manifest.webmanifest"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apk/package-lock.json
+
+      - name: Java 21 kur
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Gradle önbelleği
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+
+      - name: Bağımlılıkları kur
+        working-directory: apk
+        run: npm ci
+
+      - name: Web dosyalarını kopyala + Capacitor senkronize et
+        working-directory: apk
+        run: npm run sync
+
+      - name: APK derle
+        working-directory: apk/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: APK'yı adlandır
+        run: |
+          mkdir -p dist
+          cp apk/android/app/build/outputs/apk/debug/app-debug.apk "dist/SinavKampi-6sinif-1donem-1yazili.apk"
+          ls -lh dist
+
+      - name: APK'yı yükle (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sinav-kampi-apk
+          path: dist/*.apk
+          retention-days: 90
+
+      - name: Release oluştur (v* etiketi)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Sınav Kampı ${{ github.ref_name }}"
+          body: |
+            🎯 **Sınav Kampı · 6. Sınıf 1. Dönem 1. Yazılı**
+
+            APK'yı indir → telefonda kur (bilinmeyen kaynak iznini ver) → bildirimleri aç.
+            Uygulama kapalıyken bile her 10 dakikada sınav geri sayımı bildirimi gelir.
+          files: dist/*.apk
+          fail_on_unmatched_files: true
+
+      - name: Release'e ekle (yayınlanan sürüme)
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk
