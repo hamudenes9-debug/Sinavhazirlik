@@ -17,10 +17,35 @@ jobs:
       - uses: actions/setup-node@v5
         with: {node-version: '22', cache: npm}
       - run: npm ci
-      - run: npm run test:rules
+      - name: Test Firestore isolation and validation
+        id: rules
+        continue-on-error: true
+        run: set -o pipefail; npm run test:rules 2>&1 | tee firestore-test.log
       - run: npx playwright install --with-deps chromium
-      - run: PLAYWRIGHT_CHROMIUM=system npm run test:cloud
-      - run: npm run build && PLAYWRIGHT_CHROMIUM=system npm run test:browser
+      - run: npm run build
+      - name: Test real Firebase SDK against local emulators
+        id: cloud
+        continue-on-error: true
+        run: set -o pipefail; PLAYWRIGHT_CHROMIUM=system npm run test:cloud 2>&1 | tee cloud-test.log
+      - name: Test offline application and mobile layout
+        id: browser
+        run: PLAYWRIGHT_CHROMIUM=system npm run test:browser
+      - name: Preserve test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firebase-test-diagnostics
+          path: |
+            firestore-test.log
+            cloud-test.log
+            firebase-debug.log
+            firestore-debug.log
+            auth-debug.log
+            test-results/
+          if-no-files-found: ignore
+      - name: Enforce Firebase and browser test results
+        if: steps.rules.outcome == 'failure' || steps.cloud.outcome == 'failure'
+        run: exit 1
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
