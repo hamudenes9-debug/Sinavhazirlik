@@ -30,6 +30,22 @@ jobs:
       - name: Test offline application and mobile layout
         id: browser
         run: set -o pipefail; timeout 120s env PLAYWRIGHT_CHROMIUM=system npm run test:browser 2>&1 | tee browser-test.log
+      - name: Annotate Firestore failure for retrieval
+        if: always() && steps.rules.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('firestore-test.log').read_text(errors='replace')[-3500:]
+          print('::error title=Firestore test diagnostics::'+text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PY
+      - name: Annotate cloud failure for retrieval
+        if: always() && steps.cloud.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('cloud-test.log').read_text(errors='replace')[-3500:]
+          print('::error title=Cloud test diagnostics::'+text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          PY
       - name: Annotate browser failure for retrieval
         if: failure() && steps.browser.outcome == 'failure'
         run: |
