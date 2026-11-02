@@ -27,7 +27,7 @@ try{
  await a.page.waitForFunction(()=>!!window.KampCloud.getState().uid);
  assert.equal(await action(a.page,'window.KampCloud.getState().syncEnabled'),false,'login must not upload automatically');
  result=await action(a.page,'window.KampCloud.enableSync(true)');assert(result.ok,result.message);
- await a.page.evaluate(()=>document.querySelector('.task-check').click());
+ await a.page.locator('.desktop-nav [data-nav="kamp"]').click();await a.page.waitForSelector('.task-check');await a.page.locator('.task-check').first().click();
  result=await action(a.page,'window.KampCloud.syncNow()');assert(result.ok,result.message);
  const local=await a.page.evaluate(()=>JSON.parse(localStorage.getItem('sinav-kampi-state-v1')));assert(Object.values(local.completed).some(Boolean));
  result=await action(b.page,"window.KampCloud.authenticate('login',arg.email,arg.password)",{email,password});assert(result.ok,result.message);

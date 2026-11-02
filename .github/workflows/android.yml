@@ -35,7 +35,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          text=Path('firestore-test.log').read_text(errors='replace')[-3500:]
+          text=Path('firestore-test.log').read_text(errors='replace')[-60000:]
           print('::error title=Firestore test diagnostics::'+text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
           PY
       - name: Annotate cloud failure for retrieval
@@ -43,7 +43,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          text=Path('cloud-test.log').read_text(errors='replace')[-3500:]
+          text=Path('cloud-test.log').read_text(errors='replace')[-60000:]
           print('::error title=Cloud test diagnostics::'+text.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
           PY
       - name: Annotate browser failure for retrieval
