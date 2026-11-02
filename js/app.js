@@ -203,7 +203,7 @@
     var ln = nativeLN();
     if (!ln) return;
     try {
-      ln.cancel({ notifications: [] }).catch(function () {});
+      /* aynı id'ler yeniden zamanlandığında öncekinin yerine geçer */
       var simdi = Date.now();
       var adim = Math.max(1, Number(S.aralik) || 10) * 60000;
       var liste = [];
@@ -926,7 +926,7 @@
     h += '<div class="card" style="margin-top:12px"><div style="font-weight:800;margin-bottom:8px">📥 APK / uygulama</div>' +
       '<div class="tiny muted">Bu uygulama PWA olarak telefona eklenebilir. APK sürümü GitHub Releases sayfasında yayınlanır.</div>' +
       '<div class="grid2" style="margin-top:10px">' +
-      '<button class="btn btn--primary" id="kurBtn">📲 Ana ekrana ekle</button>' +
+      '<button class="btn btn--primary" id="kurBtn">📲 APK / ana ekran</button>' +
       '<a class="btn btn--line" href="https://github.com/hamudenes9-debug/Sinavhazirlik/releases" target="_blank" rel="noopener">APK indir</a></div>' +
       '<div class="tiny muted" style="margin-top:10px">Android\'de Chrome menüsü → “Uygulamayı yükle / Ana ekrana ekle”. iPhone\'de Safari → Paylaş → “Ana Ekrana Ekle”.</div></div>';
 
