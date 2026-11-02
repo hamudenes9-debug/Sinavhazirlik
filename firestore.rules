@@ -10,8 +10,7 @@ service cloud.firestore {
         && d.progress is string && d.progress.size() > 2 && d.progress.size() < 450000
         && d.revision is int && d.revision > 0
         && d.updatedAt == request.time
-        && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
-          || d.revision == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.revision + 1);
+        && (resource == null || d.revision == resource.data.revision + 1);
     }
     function validScore() {
       let d = request.resource.data;
