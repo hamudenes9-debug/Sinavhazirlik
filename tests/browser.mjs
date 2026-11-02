@@ -10,7 +10,7 @@ await mkdir('test-results',{recursive:true});
 const bundled=process.env.PLAYWRIGHT_CHROMIUM!=='system';
 const browser=await playwright.launch(bundled?{executablePath:await chromium.executablePath(),args:chromium.args.filter(a=>!['--single-process','--disable-web-security'].includes(a)),headless:true}:{headless:true,args:['--no-sandbox']});
 const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});page.setDefaultTimeout(12000);
-const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')console.log('Browser console:',m.text());});page.on('worker',w=>console.log('Service worker started:',w.url()));
 await page.goto('http://127.0.0.1:3000');await page.waitForSelector('.hero');await page.evaluate(()=>document.fonts.ready);
 await page.screenshot({path:'test-results/desktop.png',fullPage:true});
 assert.match(await page.locator('.next-exam h3').innerText(),/Fen Bilimleri/);
@@ -31,7 +31,10 @@ for(const p of ['takvim','kamp','kutuphane','testler','ayarlar','bulut']){await 
 let cached=0;
 if(bundled){console.log('Service worker activation is checked on stock Chromium in CI; bundled Lambda Chromium does not activate workers.');}
 else{
- await page.evaluate(async()=>{await navigator.serviceWorker.ready;});await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
+ console.log('Checking stock Chromium service worker…');
+ console.log('Worker registrations:',await page.evaluate(async()=>{const regs=await navigator.serviceWorker.getRegistrations();return regs.map(r=>({scope:r.scope,active:r.active?.state,installing:r.installing?.state,waiting:r.waiting?.state}));}));
+ await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,null,{timeout:20000});
+ console.log('Service worker controls the page; checking offline cache…');
  cached=await page.evaluate(async()=>{const keys=await caches.keys();const cache=await caches.open(keys.find(k=>k.startsWith('sinav-kampi-')));return (await cache.keys()).length;});assert(cached>45);
  await page.context().setOffline(true);await page.reload();await page.waitForSelector('.cloud-account-card');await page.locator('.bottom-nav [data-nav="kutuphane"]').click();await page.waitForSelector('.resource-card');assert.equal(await page.locator('.resource-card').count(),15);await page.context().setOffline(false);
 }
