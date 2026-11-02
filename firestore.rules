@@ -9,8 +9,7 @@ service cloud.firestore {
         && d.keys().hasAll(['progress', 'revision', 'updatedAt'])
         && d.progress is string && d.progress.size() > 2 && d.progress.size() < 450000
         && d.revision is int && d.revision > 0
-        && d.updatedAt == request.time
-        && (resource == null || d.revision == resource.data.revision + 1);
+        && d.updatedAt == request.time;
     }
     function validScore() {
       let d = request.resource.data;
@@ -28,7 +27,8 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if owner(uid);
       allow list: if false;
-      allow create, update: if owner(uid) && validProgress();
+      allow create: if owner(uid) && validProgress() && request.resource.data.revision == 1;
+      allow update: if owner(uid) && validProgress() && request.resource.data.revision == resource.data.revision + 1;
       allow delete: if owner(uid);
     }
     // Opt-in public-to-signed-in-users nickname and practice points only.
