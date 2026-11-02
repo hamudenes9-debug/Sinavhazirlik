@@ -16,6 +16,7 @@ test('private records require the owner, never public listing',async()=>{
  await assertFails(getDocs(collection(env.authenticatedContext('alice').firestore(),'users')));
 });
 test('only scoped private progress with server time and monotonic revision can be saved',async()=>{
+ await env.withSecurityRulesDisabled(async c=>{await deleteDoc(doc(c.firestore(),'users/alice')).catch(()=>{});});
  const alice=env.authenticatedContext('alice').firestore(),bob=env.authenticatedContext('bob').firestore();
  await assertFails(setDoc(doc(bob,'users/alice'),payload()));
  await assertSucceeds(setDoc(doc(alice,'users/alice'),payload()));
