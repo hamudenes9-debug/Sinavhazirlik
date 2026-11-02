@@ -8,7 +8,7 @@ let testServer;
 try{await fetch('http://127.0.0.1:3000');}catch{testServer=spawn(process.execPath,['scripts/serve.mjs'],{stdio:'ignore'});process.on('exit',()=>testServer.kill());for(let i=0;i<50;i++){try{await fetch('http://127.0.0.1:3000');break;}catch{await new Promise(r=>setTimeout(r,100));}}}
 await mkdir('test-results',{recursive:true});
 const bundled=process.env.PLAYWRIGHT_CHROMIUM!=='system';
-const browser=await playwright.launch(bundled?{executablePath:await chromium.executablePath(),args:chromium.args.filter(a=>!['--single-process','--disable-web-security'].includes(a)),headless:true}:{headless:true,args:['--no-sandbox']});
+const browser=await playwright.launch(bundled?{executablePath:await chromium.executablePath(),args:chromium.args.filter(a=>!['--single-process','--disable-web-security'].includes(a)),headless:true}:{headless:true,channel:'chromium',args:['--no-sandbox']});
 const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});page.setDefaultTimeout(12000);
 const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')console.log('Browser console:',m.text());});page.on('worker',w=>console.log('Service worker started:',w.url()));
 await page.goto('http://127.0.0.1:3000');await page.waitForSelector('.hero');await page.evaluate(()=>document.fonts.ready);
@@ -32,7 +32,7 @@ let cached=0;
 if(bundled){console.log('Service worker activation is checked on stock Chromium in CI; bundled Lambda Chromium does not activate workers.');}
 else{
  console.log('Checking stock Chromium service worker…');
- console.log('Worker registrations:',await page.evaluate(async()=>{const regs=await navigator.serviceWorker.getRegistrations();return regs.map(r=>({scope:r.scope,active:r.active?.state,installing:r.installing?.state,waiting:r.waiting?.state}));}));
+ console.log('Worker registrations:',await page.evaluate(async()=>{const regs=await navigator.serviceWorker.getRegistrations();if(!regs.length){try{await navigator.serviceWorker.register('/sw.js');}catch(e){return {registrationError:String(e)};}}return (await navigator.serviceWorker.getRegistrations()).map(r=>({scope:r.scope,active:r.active?.state,installing:r.installing?.state,waiting:r.waiting?.state}));}));
  await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,null,{timeout:20000});
  console.log('Service worker controls the page; checking offline cache…');
  cached=await page.evaluate(async()=>{const keys=await caches.keys();const cache=await caches.open(keys.find(k=>k.startsWith('sinav-kampi-')));return (await cache.keys()).length;});assert(cached>45);
