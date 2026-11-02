@@ -1,0 +1,252 @@
+# -*- coding: utf-8 -*-
+"""6. sinif 1. donem 1. yazili - ders icerikleri (A grubu).
+Metinlerde **kalin** isareti kullanilabilir."""
+
+FEN = {
+    "id": "fen",
+    "ad": "Fen Bilimleri",
+    "kisa": "Fen",
+    "emoji": "🔬",
+    "renk": "#22c55e",
+    "sinav_notu": "1. dönem 1. yazılı kapsamı: 1. Ünite (Güneş Sistemi ve Tutulmalar) + 2. Ünitenin girişi (Destek ve Hareket Sistemi).",
+    "kazanimlar": [
+        {"kod": "F.6.1.1", "metin": "Güneş sistemindeki gezegenleri, Güneş'e yakınlıklarına göre sıralayarak birbirleriyle karşılaştırır."},
+        {"kod": "F.6.1.2", "metin": "Güneş tutulması ve Ay tutulmasını model üzerinde açıklar, benzerlik ve farklarını söyler."},
+        {"kod": "F.6.2.1", "metin": "Destek ve hareket sistemini oluşturan yapı ve organları model üzerinde gösterir."},
+    ],
+    "notlar": [
+        {"b": "Güneş sistemi", "m": [
+            "Güneş sisteminin merkezinde **Güneş** bulunur; sistemin kütlesinin büyük kısmını oluşturur.",
+            "Güneş'e yakınlık sırası: **Merkür – Venüs – Dünya – Mars – Jüpiter – Satürn – Uranüs – Neptün** (8 gezegen).",
+            "**Asteroit kuşağı** Mars ile Jüpiter arasındadır. **Kuiper kuşağı** Neptün'ün ötesindedir.",
+            "İç gezegenler (Merkür, Venüs, Dünya, Mars) **kayaç/karasal**; dış gezegenler (Jüpiter, Satürn, Uranüs, Neptün) **gaz** yapılıdır.",
+            "En büyük gezegen **Jüpiter**, en küçük gezegen **Merkür**'dür. En sıcak gezegen **Venüs**'tür (sera etkisi).",
+            "Satürn'ün belirgin **halkaları** vardır. Dünya'nın tek doğal uydusu **Ay**'dır.",
+        ]},
+        {"b": "Güneş tutulması ve Ay tutulması", "m": [
+            "**Güneş tutulması:** Ay, Güneş ile Dünya'nın **arasına** girer. **Yeni ay** döneminde, **gündüz** ve kısa süreli (yaklaşık 7 dk) gözlenir.",
+            "**Ay tutulması:** Dünya, Güneş ile Ay'ın **arasına** girer. **Dolunay** döneminde, **gece** ve daha uzun süreli (yaklaşık 1 saat) gözlenir.",
+            "Güneş tutulması **tam, parçalı, halkalı**; Ay tutulması **tam ve parçalı** olabilir.",
+            "Tutulmalar ışığın **doğrusal yayılması** ve gölge oluşumu ile açıklanır.",
+            "Güneş tutulmasını **çıplak gözle** izlemek tehlikelidir; özel filtre kullanılmalıdır.",
+        ]},
+        {"b": "Destek ve hareket sistemi", "m": [
+            "İskelet + kaslar = **destek ve hareket sistemi**. İskeletin görevleri: vücuda şekil vermek, organları korumak, hareketi sağlamak, mineral depolamak, kan hücresi üretmek.",
+            "**Kemik çeşitleri:** uzun (uyluk, kol), kısa (el/ayak bilek kemikleri), yassı (kafatası, kaburga, kürek).",
+            "**Eklem çeşitleri:** oynar (omuz, kalça, diz, dirsek), yarı oynar (omurga, kaburga), oynamaz (kafatası).",
+            "**Kas çeşitleri:** çizgili (isteğimizle, kol-bacak), düz (isteğimiz dışında, mide-bağırsak), kalp kası (sadece kalpte, ritmik).",
+            "Kaslar kemiklere **tendon** ile bağlanır; kasılınca boyu kısalır ve kemikleri çeker.",
+        ]},
+    ],
+    "ipuclari": [
+        "Gezegen sıralaması için kısaltma: **M**erkür **V**enüs **D**ünya **M**ars **J**üpiter **S**atürn **U**ranüs **N**eptün.",
+        "Güneş tutulması = Ay ortada (gündüz, kısa). Ay tutulması = Dünya ortada (gece, uzun).",
+        "Eklem-kas eşleştirmeleri çok sorulur: kafatası = oynamaz eklem, omurga = yarı oynar.",
+    ],
+    "quiz": [
+        {"s": "Güneş'e yakınlık sırasına göre 4. gezegen hangisidir?", "o": ["Venüs", "Dünya", "Mars", "Jüpiter"], "d": 2, "a": "Merkür(1) - Venüs(2) - Dünya(3) - **Mars(4)**."},
+        {"s": "Asteroit kuşağı hangi iki gezegen arasındadır?", "o": ["Dünya - Mars", "Mars - Jüpiter", "Jüpiter - Satürn", "Venüs - Dünya"], "d": 1, "a": "Asteroit kuşağı **Mars ile Jüpiter** arasındadır."},
+        {"s": "Güneş tutulması hangi Ay evresinde ve günün hangi vaktinde gözlenir?", "o": ["Dolunay - gece", "Yeni ay - gündüz", "Yeni ay - gece", "Dolunay - gündüz"], "d": 1, "a": "Ay arada olduğu için **yeni ay** evresinde, **gündüz** gözlenir."},
+        {"s": "Ay tutulmasında hangi gök cismi ortadadır?", "o": ["Güneş", "Ay", "Dünya", "Hiçbiri"], "d": 2, "a": "Ay tutulmasında **Dünya**, Güneş ile Ay arasındadır."},
+        {"s": "Kafatası kemikleri hangi kemik çeşidine girer?", "o": ["Uzun kemik", "Kısa kemik", "Yassı kemik", "Oynar kemik"], "d": 2, "a": "Kafatası, kaburga ve kürek kemiği **yassı kemik**tir."},
+        {"s": "Omurgadaki eklemler hangi türdendir?", "o": ["Oynar", "Yarı oynar", "Oynamaz", "Sabit"], "d": 1, "a": "Omurga ve kaburgada **yarı oynar** eklem vardır."},
+        {"s": "Sadece kalpte bulunan, ritmik çalışan kas hangisidir?", "o": ["Çizgili kas", "Düz kas", "Kalp kası", "Tendon"], "d": 2, "a": "**Kalp kası** yalnızca kalpte bulunur ve istemsiz çalışır."},
+        {"s": "Aşağıdakilerden hangisi iskeletin görevlerinden biri değildir?", "o": ["Organları korumak", "Kasılmak", "Vücuda şekil vermek", "Mineral depolamak"], "d": 1, "a": "**Kasılmak** kasların görevidir; iskelet hareketi pasif olarak sağlar."},
+    ],
+}
+
+MATEMATIK = {
+    "id": "matematik",
+    "ad": "Matematik",
+    "kisa": "Matematik",
+    "emoji": "➗",
+    "renk": "#3b82f6",
+    "sinav_notu": "Ülke geneli ortak yazılı (MEB senaryosu). 8 soru, 40 dakika, 100 puan. Konu tablosu: MAT.6.1.1 - MAT.6.1.6.",
+    "kazanimlar": [
+        {"kod": "MAT.6.1.1", "metin": "Bir doğal sayının çarpanlarını, katlarını ve bölenlerini belirler; ortak çarpan/kat problemlerini çözer."},
+        {"kod": "MAT.6.1.2", "metin": "2, 3, 4, 5, 6, 9 ve 10'a kalansız bölünebilme kurallarını açıklar ve uygular."},
+        {"kod": "MAT.6.1.3", "metin": "Asal sayıları tanır; doğal sayıları asal çarpanlarına ayırır."},
+        {"kod": "MAT.6.1.4", "metin": "Doğal sayıların ortak bölenlerini (EBOB) ve ortak katlarını (EKOK) belirler; problem çözer."},
+        {"kod": "MAT.6.1.5", "metin": "Ondalık gösterimleri çözümler, basamak değerlerini belirler, yuvarlama ve sıralama yapar."},
+        {"kod": "MAT.6.1.6", "metin": "Kesirlerin ondalık gösterimini bulur; devirli ondalık gösterimleri yazar. Deneysel olasılık (MAT.6.6.1)."},
+    ],
+    "notlar": [
+        {"b": "Çarpan, kat ve bölen", "m": [
+            "**Çarpan (bölen):** Bir sayıyı kalansız bölen sayılar. 36'nın çarpanları: 1, 2, 3, 4, 6, 9, 12, 18, 36.",
+            "**Kat:** Sayının 1, 2, 3... ile çarpımları. 7'nin 50-80 arası katları: 56, 63, 70, 77.",
+            "Çarpan sayısı tek olan sayılar **tam kare** sayılardır (1, 4, 9, 16, 25...).",
+            "1 her sayının çarpanıdır; her sayı kendisinin en büyük çarpanıdır.",
+        ]},
+        {"b": "Bölünebilme kuralları", "m": [
+            "**2:** birler basamağı 0, 2, 4, 6, 8 (çift sayılar).",
+            "**3:** rakamlar toplamı 3'ün katı. **9:** rakamlar toplamı 9'un katı.",
+            "**4:** son iki basamağı 4'ün katı ya da 00. **5:** birler basamağı 0 veya 5.",
+            "**6:** hem 2 hem 3 ile bölünmeli. **10:** birler basamağı 0.",
+            "Örnek: 4▲2 sayısı 3 ile bölünüyorsa 4+▲+2 = 6+▲ olmalı → ▲ = 0, 3, 6, 9.",
+        ]},
+        {"b": "Asal sayılar ve asal çarpanlara ayırma", "m": [
+            "**Asal sayı:** 1 ve kendisinden başka böleni olmayan, 1'den büyük sayılar: 2, 3, 5, 7, 11, 13, 17, 19, 23...",
+            "**2 en küçük ve tek çift asal sayıdır. 1 asal değildir** (sadece bir böleni olduğu için).",
+            "Asal çarpanlara ayırma: sayıyı en küçük asal sayıdan başlayarak böl. 84 = 2 × 2 × 3 × 7; 90 = 2 × 3 × 3 × 5.",
+        ]},
+        {"b": "EBOB - EKOK", "m": [
+            "**EBOB** (en büyük ortak bölen): 'eşit parçalara ayırma, hiç artmamalı, en büyük grup' problemleri.",
+            "**EKOK** (en küçük ortak kat): 'aynı anda tekrar etme, birlikte ne zaman' problemleri.",
+            "Örnek: 36 ve 48'in EBOB'u 12 → bir grupta 12 boncuk, 36÷12 + 48÷12 = 7 grup.",
+            "Örnek: 6 ve 8 saniyede yanan ışıklar 24. saniyede birlikte yanar; 60 sn içinde 24 ve 48 → **2 kez**.",
+            "12 ile 18'in ortak bölenleri: 1, 2, 3, 6. 4 ile 6'nın 40'tan küçük ortak katları: 12, 24, 36.",
+        ]},
+        {"b": "Ondalık gösterim", "m": [
+            "Basamak değerleri: 4,307 → 4 tam, 3 onda birler (0,3), 0 yüzde birler, 7 binde birler.",
+            "4,307 = 4 + 3/10 + 0/100 + 7/1000.",
+            "**Yuvarlama:** 12,48 → onda birler basamağına yuvarlanınca 12,5 (sağdaki 8 ≥ 5 olduğu için yukarı).",
+            "**Sıralama:** basamakları eşitle → 2,050 ; 2,500 ; 2,055 ; 2,045 → 2,045 < 2,05 < 2,055 < 2,5.",
+            "**Devirli ondalık:** 5/6 = 0,8333... = 0,83 devirli; 7/8 = 0,875 (devirsiz). 0,3636... = 0,36 devirli.",
+        ]},
+        {"b": "Deneysel olasılık (MAT.6.6.1)", "m": [
+            "Deneysel olasılık = **istenen sonuç sayısı ÷ deney sayısı**.",
+            "Örnek: 50 çekilişte 22 mavi → 22/50 = 11/25 = %44.",
+            "Yüzdeye çevirmek için paydayı 100'e genişlet: 17/25 = 68/100 = %68.",
+        ]},
+    ],
+    "ipuclari": [
+        "Sorularda işlem basamaklarını yaz: yalnızca sonucu yazan tam puan almaz.",
+        "EBOB mu EKOK mu? 'Paylaştırma / bölme' → EBOB, 'tekrar etme / buluşma' → EKOK.",
+        "Ondalık sayıları sıralarken virgülden sonraki basamak sayısını eşitle (2,5 → 2,500).",
+        "Asal çarpanlara ayırmada her adımı yaz, çarpım hâlinde bitir: 90 = 2 · 3 · 3 · 5.",
+    ],
+    "quiz": [
+        {"s": "36 sayısının çarpanlarından hangisi diğerlerinden farklı gruptadır?", "o": ["4", "12", "8", "6"], "d": 2, "a": "36 = 1, 2, 3, 4, 6, 9, 12, 18, 36. **8** çarpan değildir."},
+        {"s": "Üç basamaklı 4▲2 sayısı 3 ile tam bölünüyorsa ▲ hangisi olamaz?", "o": ["0", "3", "6", "8"], "d": 3, "a": "6+▲ 3'ün katı olmalı → ▲ = 0, 3, 6, 9. **8** olamaz."},
+        {"s": "90 sayısının asal çarpanlarının toplamı kaçtır?", "o": ["10", "12", "14", "7"], "d": 0, "a": "90 = 2 × 3 × 3 × 5 → asal çarpanlar 2, 3, 5 → 2+3+5 = **10**."},
+        {"s": "36 kırmızı ve 48 beyaz boncuk eşit gruplara ayrılacak. Bir grupta en çok kaç boncuk olur?", "o": ["6", "8", "12", "16"], "d": 2, "a": "EBOB(36,48) = **12** → bir grupta 12 boncuk, toplam 7 grup."},
+        {"s": "4 ile 6'nın 40'tan küçük kaç ortak katı vardır?", "o": ["2", "3", "4", "5"], "d": 1, "a": "12, 24, 36 → **3** tane."},
+        {"s": "6 ve 8 saniyede yanan iki ışık ilk 1 dakikada kaç kez birlikte yanar?", "o": ["1", "2", "3", "4"], "d": 1, "a": "EKOK(6,8) = 24 → 24 ve 48. saniyeler → **2 kez**."},
+        {"s": "4,307 sayısındaki 3 rakamının basamak değeri kaçtır?", "o": ["3", "0,3", "0,03", "300"], "d": 1, "a": "3 rakamı onda birler basamağında → **0,3** = 3/10."},
+        {"s": "7/8 kesrinin ondalık gösterimi hangisidir?", "o": ["0,875", "0,78", "0,875 devirli", "0,87"], "d": 0, "a": "7 ÷ 8 = **0,875** (devirsiz). 5/6 = 0,8333... devirlidir."},
+        {"s": "2,05 ; 2,5 ; 2,055 ; 2,045 sayılarının küçükten büyüğe sıralaması hangisidir?", "o": ["2,045 < 2,05 < 2,055 < 2,5", "2,05 < 2,045 < 2,5 < 2,055", "2,5 < 2,055 < 2,05 < 2,045", "2,045 < 2,055 < 2,05 < 2,5"], "d": 0, "a": "Basamakları eşitle: 2,045 < 2,050 < 2,055 < 2,500."},
+        {"s": "50 çekilişte 22 kez mavi bilye çekilmiştir. Mavi çekmenin deneysel olasılığı yüzde kaçtır?", "o": ["%22", "%44", "%50", "%11"], "d": 1, "a": "22/50 = 44/100 = **%44**."},
+        {"s": "0,363636... sayısının devir çizgisiyle gösterimi hangisidir?", "o": ["0,36 devirli", "0,3 devirli", "0,363 devirli", "0,6 devirli"], "d": 0, "a": "Tekrar eden kısım 36 → **0,36** (36 üzerinde devir çizgisi)."},
+        {"s": "24 kurabiye, her pakette eşit ve 1'den fazla olacak biçimde en az 2 pakete konacak. Kaç farklı paketleme yapılabilir?", "o": ["4", "6", "8", "12"], "d": 1, "a": "Bir pakette 2, 3, 4, 6, 8, 12 olabilir → **6** farklı paketleme."},
+    ],
+}
+
+TURKCE = {
+    "id": "turkce",
+    "ad": "Türkçe",
+    "kisa": "Türkçe",
+    "emoji": "📖",
+    "renk": "#f97316",
+    "sinav_notu": "1. dönem 1. yazılı kapsamı: okuduğunu anlama + sözcükte/cümlede anlam + ad (isim) ve ad tamlaması + yazım-noktalama.",
+    "kazanimlar": [
+        {"kod": "T.6.3", "metin": "Okuduğu metni anlar, ana fikir ve yardımcı fikirleri belirler, çıkarım yapar."},
+        {"kod": "T.6.3.5", "metin": "Sözcüklerin gerçek, mecaz ve terim anlamlarını ayırt eder."},
+        {"kod": "T.6.3.9", "metin": "Deyim ve atasözlerinin anlam özelliklerini kavrar."},
+        {"kod": "T.6.4.2", "metin": "İsimleri tür ve yapı özelliklerine göre sınıflandırır; isim tamlamalarını kurar."},
+        {"kod": "T.6.4.6", "metin": "Yazım kurallarını ve noktalama işaretlerini uygular."},
+    ],
+    "notlar": [
+        {"b": "Sözcükte anlam", "m": [
+            "**Gerçek anlam:** sözcüğün ilk (temel) anlamı — 'Buz gibi su içti.'",
+            "**Mecaz anlam:** gerçek anlamdan uzaklaşmış — 'Buz gibi bir bakış attı.'",
+            "**Terim anlam:** bir bilim/sanat dalına özgü — 'Üçgenin iç açıları' (matematik).",
+            "**Eş anlamlı:** yürek-kalp. **Zıt anlamlı:** acı-tatlı. **Sesteş (eş sesli):** yüz (sayı) / yüz (yüzme) / yüz (surat).",
+            "**Deyim:** en az iki sözcükten oluşan, kalıplaşmış, çoğunlukla mecaz anlamlı söz grubu — 'göz atmak'. **Atasözü:** toplumun deneyimini aktaran öğüt verici kalıplaşmış söz — 'Damlaya damlaya göl olur.'",
+        ]},
+        {"b": "Cümlede anlam", "m": [
+            "**Neden-sonuç:** 'Yağmur yağdığı için maç iptal edildi.' **Amaç-sonuç:** 'Sınavı kazanmak için çalıştı.'",
+            "**Koşul (şart):** '-sa/-se' ya da 'eğer' — 'Çalışırsan kazanırsın.'",
+            "**Karşılaştırma:** 'Bu kitap diğerinden daha akıcı.' **Öznellik:** kişisel yorum vardır. **Nesnellik:** kanıtlanabilir, yorumsuz.",
+            "**Örtülü anlam:** 'Artık erken kalkıyorum.' → önceden geç kalktığı anlaşılır.",
+        ]},
+        {"b": "Ad (isim)", "m": [
+            "**Varlıklara verilişine göre:** özel ad (Ankara, Ayşe, Türkçe) - cins adı (şehir, kedi, kitap).",
+            "**Sayısına göre:** tekil (çocuk), çoğul (çocuklar), topluluk (ordu, sınıf, orman).",
+            "**Somut:** beş duyuyla algılanan (masa, koku). **Soyut:** algılanamayan (sevgi, umut, özgürlük).",
+            "**Yapısına göre:** basit (göz), türemiş (gözlük), birleşik (hanımeli).",
+            "Ad tamlamaları: **belirtili** (ev-in kapı-sı), **belirtisiz** (demir kapı), **zincirleme** (okulun bahçe kapısı).",
+        ]},
+        {"b": "Sıfat ve zamir", "m": [
+            "**Sıfat (ön ad):** adı niteleyen (kırmızı kalem) veya belirten (üç kalem, bu kalem) sözcük.",
+            "**Zamir (adıl):** adın yerini tutan sözcük — ben, sen, o, bunlar, kendim, kim, herkes.",
+        ]},
+        {"b": "Yazım ve noktalama", "m": [
+            "**de/da:** 'halde, dahi' anlamı ayrı yazılır (Ben de geldim). **-de/-da hal eki** bitişik (evde).",
+            "**ki:** bağlaç olan 'ki' ayrı yazılır (Öyle güzel ki...). **mi** her zaman ayrı: 'Geldi mi?'",
+            "**Noktalama:** virgül ard arda eş görevli sözcükler; noktalı virgül anlamca bağlı cümleleri ayırır; iki nokta açıklamadan önce; üç nokta tamamlanmamış cümlelerde.",
+            "Büyük harf: özel adlar, cümle başı, kitap/dergi adları, kısaltmalar (TDK).",
+        ]},
+    ],
+    "ipuclari": [
+        "Metin sorularında önce **soru kökünü** oku, sonra paragrafı tara.",
+        "'Aşağıdakilerden hangisi çıkarılamaz?' gibi olumsuz soruları yuvarlak içine al.",
+        "Deyim sorularında sözcüklerin **tek tek** değil, **bütün olarak** anlamına bak.",
+    ],
+    "quiz": [
+        {"s": "'Sınavda soruları kanatırcasına çözdü.' cümlesindeki altı çizili sözcük hangi anlamdadır?", "o": ["Gerçek", "Mecaz", "Terim", "Eş anlamlı"], "d": 1, "a": "'Kanatırcasına' burada hızlı/çok anlamında kullanılmış → **mecaz**."},
+        {"s": "Aşağıdakilerden hangisi topluluk adıdır?", "o": ["Kitap", "Ordu", "Sevgi", "Ankara"], "d": 1, "a": "Tekil görünüp çokluk bildiren **ordu, sınıf, orman** topluluk adıdır."},
+        {"s": "'Kalemin ucu kırıldı.' ifadesindeki tamlamanın türü nedir?", "o": ["Belirtili ad tamlaması", "Belirtisiz ad tamlaması", "Sıfat tamlaması", "Zincirleme ad tamlaması"], "d": 0, "a": "kalem-in uç-u → tamlayan ve tamlanan ekli → **belirtili** ad tamlaması."},
+        {"s": "'Yağmur yağdığı için tören iptal edildi.' cümlesinde hangi anlam ilişkisi vardır?", "o": ["Amaç-sonuç", "Koşul-sonuç", "Neden-sonuç", "Karşılaştırma"], "d": 2, "a": "'-dığı için' neden bildirir → **neden-sonuç**."},
+        {"s": "'Kitaptaki bilgiler de doğru.' cümlesindeki 'de' için hangisi doğrudur?", "o": ["Bağlaçtır, ayrı yazılır", "Hâl ekidir, bitişik yazılır", "Yapım ekidir, bitişik yazılır", "Sıfat olduğu için ayrı yazılır"], "d": 0, "a": "'de' yerine **'dahi'** getirilebiliyorsa bağlaçtır ve **ayrı** yazılır. 'Bilgiler dahi doğru' → bağlaç."},
+        {"s": "'Havalar ısındı, artık mont giymiyorum.' cümlesinde görülen anlam özelliği hangisidir?", "o": ["Örtülü anlam", "Terim anlam", "Abartma", "Karşılaştırma"], "d": 0, "a": "Önceden mont giydiği **örtülü** olarak anlatılıyor."},
+        {"s": "Aşağıdakilerden hangisi soyut addır?", "o": ["Masa", "Koku", "Umut", "Kalem"], "d": 2, "a": "Beş duyuyla algılanamayan **umut** soyut addır."},
+    ],
+}
+
+SOSYAL = {
+    "id": "sosyal",
+    "ad": "Sosyal Bilgiler",
+    "kisa": "Sosyal",
+    "emoji": "🌍",
+    "renk": "#a16207",
+    "sinav_notu": "Kazanım tablosu: SB.6.1.1, SB.6.1.2, SB.6.1.3 ve SB.6.2.1. Toplam 6 soru (senaryo 4).",
+    "kazanimlar": [
+        {"kod": "SB.6.1.1", "metin": "Dâhil olduğu grupları ve bu gruplardaki rollerin zaman içinde değişebileceğine ilişkin çıkarım yapar."},
+        {"kod": "SB.6.1.2", "metin": "Kültürel bağlarımızın ve millî değerlerimizin toplumsal birlikteliğe etkisini yorumlar."},
+        {"kod": "SB.6.1.3", "metin": "Toplumsal hayatta karşılaşılan sorunlara yönelik çözüm önerilerini müzakere eder."},
+        {"kod": "SB.6.2.1", "metin": "Ülkemizin, kıtaların ve okyanusların konum özelliklerini algılar."},
+    ],
+    "notlar": [
+        {"b": "SB.6.1.1 - Gruplar ve roller", "m": [
+            "**Grup:** ortak amaç için bir araya gelen insanlar (aile, sınıf, takım, mahalle).",
+            "**Rol:** kişinin grup içinde üstlendiği görev. Roller **zamanla değişir**: çocuk → öğrenci → abla/ağabey → çalışan.",
+            "Roller **çatışabilir** (öğrenci rolü ile kaptan rolü); rol çatışmasını öncelik sırası belirleyerek çözeriz.",
+            "Hak ve sorumluluklar birbirini tamamlar: sınıfta söz hakkı (hak) → dersi dinlemek (sorumluluk).",
+            "Gruplaşmada **dışlama (akran zorbalığı)** önlenmeli; herkesin katılımı desteklenmelidir.",
+        ]},
+        {"b": "SB.6.1.2 - Kültürel bağlar ve millî değerler", "m": [
+            "Bizi bir arada tutan kültürel ögeler: **dil, din, tarih, gelenek-görenek, sanat, mutfak, bayramlar, millî marş, bayrak**.",
+            "**Millî değerler:** bağımsızlık, vatanseverlik, bayrak sevgisi, dayanışma, misafirperverlik, adalet.",
+            "Kültürel bağlar **toplumsal birlikteliği** güçlendirir; farklı kültürlere saygı, birlikte yaşama kültürünü besler.",
+            "Bayramlar, düğünler, türküler ortak duyguları paylaştırır → toplumsal dayanışma artar.",
+        ]},
+        {"b": "SB.6.1.3 - Toplumsal sorunlar ve çözüm önerileri", "m": [
+            "Toplumsal sorun örnekleri: **çevre kirliliği, trafik, işsizlik, göç, eğitimde fırsat eşitsizliği, bağımlılık, akran zorbalığı**.",
+            "Çözümde aktörler: **birey, aile, okul, yerel yönetim (belediye), kamu kurumları (valilik, emniyet), sivil toplum kuruluşları (STK), medya**.",
+            "Çözüm önerisi yazarken: sorunu tanımla → nedenini belirt → **uygulanabilir** ve **ölçülebilir** öneri sun.",
+            "Müzakere adımları: dinle → görüş belirt → ortak noktada uzlaş → karar.",
+        ]},
+        {"b": "SB.6.2.1 - Ülkemizin konumu", "m": [
+            "Türkiye **Asya ile Avrupa** arasında köprü konumundadır; 3 tarafı denizlerle çevrilidir (Akdeniz, Ege, Karadeniz).",
+            "**Matematik konum:** 36°-42° kuzey enlemleri (kuzey yarım küre, orta kuşak) ve 26°-45° doğu boylamları.",
+            "Kuzey yarım kürede olması **mevsimleri**, orta kuşakta olması **dört mevsimin belirgin yaşanmasını** sağlar.",
+            "**Özel (göreceli) konum:** boğazlar (İstanbul, Çanakkale), ticaret yolları, petrol bölgelerine yakınlık, çevredeki ülkelere komşuluk.",
+            "Türkiye 7 coğrafi bölgeye ayrılır; en büyük yüzölçümlü bölge **Doğu Anadolu**, en fazla nüfuslu bölge **Marmara**.",
+            "Kıtalar: Asya, Avrupa, Afrika, Avustralya, Antarktika, Kuzey Amerika, Güney Amerika. Okyanuslar: Büyük Okyanus, Atlas Okyanusu, Hint Okyanusu, Güney Okyanusu, Kuzey Buz Denizi.",
+        ]},
+    ],
+    "ipuclari": [
+        "Rol sorusunda 'zamanla değişen' vurgusunu yakala → çocukluk rolüyle bugünkü rolü karşılaştır.",
+        "Konum sorularında **enlem = iklim/mevsim**, **boylam = yerel saat** farkı verir.",
+        "Çözüm önerisi sorularında 'kim yapmalı?' (birey, belediye, STK) mutlaka yaz.",
+    ],
+    "quiz": [
+        {"s": "Aşağıdakilerden hangisi kültürel bağlarımızı güçlendiren ögelerden biri değildir?", "o": ["Dil birliği", "Bayramlar", "Kişisel gelir farkı", "Türküler"], "d": 2, "a": "**Gelir farkı** bir kültürel bağ değildir; dil, bayram, türkü kültürel ögelerdir."},
+        {"s": "Türkiye'nin 'orta kuşakta' olmasının sonucu nedir?", "o": ["Gece ile gündüz süresi eşitlenmez", "Dört mevsim belirgin yaşanır", "Yerel saatler aynıdır", "Nüfus yoğunluğu azdır"], "d": 1, "a": "Orta kuşakta mevsimler belirgin yaşanır."},
+        {"s": "Bir kişinin grup içinde üstlendiği göreve ne denir?", "o": ["Rol", "Statü karmaşası", "Kültür", "Göç"], "d": 0, "a": "Grup içindeki görevlere **rol** denir ve zamanla değişir."},
+        {"s": "Türkiye hangi iki kıta arasında köprü konumundadır?", "o": ["Asya - Afrika", "Avrupa - Afrika", "Asya - Avrupa", "Avrupa - Amerika"], "d": 2, "a": "Türkiye **Asya ve Avrupa** arasındadır."},
+        {"s": "Akran zorbalığı ile ilgili en uygun çözüm önerisi hangisidir?", "o": ["Zorbalığa sessiz kalmak", "Okulda güvenlik birimi ve rehberlik desteğiyle farkındalık çalışması yapmak", "Zorba kişiye aynı şekilde karşılık vermek", "Konuyu tamamen görmezden gelmek"], "d": 1, "a": "Kurumsal (okul + rehberlik) ve önleyici öneri en uygulanabilir çözümdür."},
+        {"s": "Aşağıdakilerden hangisi toplumsal bir sorundur?", "o": ["Fenerbahçe maçının ertelenmesi", "Çevre kirliliği", "Öğrencinin matematik sınavı", "Ailecek tatile gitmek"], "d": 1, "a": "**Çevre kirliliği** toplumun tümünü etkileyen toplumsal sorundur."},
+        {"s": "Türkiye'nin matematik konumu için doğru ifade hangisidir?", "o": ["36°-42° kuzey enlemleri", "26°-45° güney enlemleri", "36°-42° doğu boylamları", "Ekvatorda yer alır"], "d": 0, "a": "36°-42° **kuzey** enlemleri, 26°-45° doğu boylamları."},
+    ],
+}

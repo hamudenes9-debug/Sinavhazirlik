@@ -1,0 +1,17 @@
+{
+  "appId": "com.sinavkampi.app",
+  "appName": "Sınav Kampı",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#f4f5fb"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#4f46e5",
+      "sound": "beep.wav"
+    }
+  }
+}
