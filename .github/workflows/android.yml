@@ -53,6 +53,9 @@ jobs:
         with: {node-version: '22', cache: npm}
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci --no-audit --no-fund && npm test && npm run build
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_PROXY_URL: ${{ secrets.GROQ_PROXY_URL }}
       - name: Install Android SDK packages
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -80,8 +83,8 @@ jobs:
           unzip -t artifacts/Sinav-Kampi.apk
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(firebase.js|cloud-ui.js|index.html)'
           sha256sum artifacts/Sinav-Kampi.apk | tee apk-sha256.txt
-          if gh release view v1.2.0 >/dev/null 2>&1; then
-            gh release upload v1.2.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
+          if gh release view v1.3.0 >/dev/null 2>&1; then
+            gh release upload v1.3.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
           else
-            gh release create v1.2.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.2.0 — Ortak sınavlar ve Google/GitHub girişi" --notes "Ortak sınav takvimi, Google/GitHub ve e-posta/şifre girişi, isteğe bağlı bulut eşitleme ve takma adlı skor tablosu. Uygulama içinde Firebase bağlantı ayarı yoktur; proje arka planda hazır gelir. APK debug imzalıdır; canlı Firebase için proje sahibinin Authentication sağlayıcıları (Email/Password, Google, GitHub), Firestore ve firestore.rules kurulumunu tamamlaması gerekir. Ayrıntılar: FIREBASE.md."
+            gh release create v1.3.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.3.0 — Ödev koçu seni arıyor" --notes "Ödev listesi ve okul çıkışı arayan yapay zekâ koçu (Kamp Koçu), sesli sohbet, Groq desteği ve çevrimdışı ödev özeti. Ortak sınav takvimi, Google/GitHub ve e-posta/şifre girişi, isteğe bağlı bulut eşitleme korunur. Uygulama içinde Firebase bağlantı ayarı yoktur. Groq API anahtarı depoya yazılmaz; cihazda bir kez girilir veya GROQ_API_KEY deposu sırrıyla derlenir. APK debug imzalıdır. Ayrıntılar: AI-KOC.md ve FIREBASE.md."
           fi

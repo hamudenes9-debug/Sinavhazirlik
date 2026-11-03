@@ -13,6 +13,8 @@ Bu sürüm, Android WebView içinde **Firebase Web SDK** kullanır. Bu nedenle A
 
 `apiKey` bir istemci tanımlayıcısıdır; yönetici şifresi değildir. Buna rağmen erişim güvenliği kurallarla sağlanmalıdır. Admin SDK JSON dosyası, servis hesabı özel anahtarı veya Firebase şifresi uygulamaya konmaz. Bu projede Admin SDK kullanılmaz.
 
+Ödev koçu ve sesli arama için ayrıca bkz. [AI-KOC.md](AI-KOC.md).
+
 ## Uygulama içinde Firebase ayarı yok
 
 Kullanıcıya proje ID, API key veya bağlantı formu gösterilmez. `src/firebase-config.js` içindeki sinavkam yapılandırması pakete gömülür. Aşağıdaki ayarlar yalnızca proje sahibinin Firebase Console’da yapacağı kurulumdur.
@@ -81,7 +83,7 @@ npm run test:browser   # sunucu yoksa kendisi başlatır
 
 Emulator testleri `demo-sinav-kampi` projesini kullanır; canlı `sinavkam` verisine dokunmaz. GitHub Actions bu testleri ve APK derlemesini çalıştırır; v1.1.0 için kurallar, iki cihazlı bulut senaryosu, çevrimdışı önbellek ve Android derlemesi CI’da geçmiştir. Emulator başarısı canlı proje ayarlarının yayımlandığını kanıtlamaz. Canlı doğrulama için yukarıdaki üç ayardan sonra gerçek bir hesapla giriş ve iki cihazda eşitleme kontrolü yapılmalıdır.
 
-Kurulabilir APK: https://github.com/hamudenes9-debug/Sinavhazirlik/releases/tag/v1.2.0
+Kurulabilir APK: https://github.com/hamudenes9-debug/Sinavhazirlik/releases/tag/v1.3.0
 
 ## Sorun giderme
 

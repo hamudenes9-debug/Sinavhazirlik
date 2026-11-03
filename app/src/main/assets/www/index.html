@@ -6,7 +6,7 @@
 <title>Sınav Kampı · Hazırlık benim işim</title>
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css">
-<script defer src="data.js"></script><script defer src="core.js"></script><script defer src="content.js"></script><script defer src="firebase.js"></script><script defer src="cloud-ui.js"></script><script defer src="app.js"></script>
+<script defer src="data.js"></script><script defer src="core.js"></script><script defer src="content.js"></script><script defer src="ai-core.js"></script><script defer src="ai-config.js"></script><script defer src="firebase.js"></script><script defer src="ai.js"></script><script defer src="cloud-ui.js"></script><script defer src="app.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">İçeriğe geç</a>
@@ -17,6 +17,7 @@
   <a href="#bugun" data-nav="bugun"><span data-icon="home"></span>Bugün<span class="nav-active-dot"></span></a>
   <a href="#takvim" data-nav="takvim"><span data-icon="calendar"></span>Sınav takvimi</a>
   <a href="#kamp" data-nav="kamp"><span data-icon="tent"></span>Sınav kampı<span class="tiny-tag">12 GÜN</span></a>
+  <a href="#aiko" data-nav="aiko"><span data-icon="phone"></span>Ödev & AI koç<span class="tiny-tag">YENİ</span></a>
   <a href="#kutuphane" data-nav="kutuphane"><span data-icon="folder"></span>Hazırlık PDF’leri</a>
   <a href="#testler" data-nav="testler"><span data-icon="check-square"></span>Deneme & test</a>
   <a href="#bulut" data-nav="bulut"><span data-icon="cloud"></span>Bulut & skorlar</a>
@@ -34,4 +35,5 @@
 <div id="toast" role="status" aria-live="polite"></div>
 <dialog id="modal"><div id="modal-content"></div></dialog>
 <input type="file" id="import-file" accept="application/json,.json" hidden>
+<button class="ai-fab" id="ai-fab" data-ai="call-now" aria-label="Kamp Koçu seni arasın"><span data-icon="phone"></span><span class="ai-fab-label">Koç</span></button>
 </body></html>

@@ -1,9 +1,12 @@
 # Sınav Kampı
 
-6. sınıf sınav hazırlık uygulaması. Türkiye saatiyle kişisel sınav takvimi, 12 günlük kamp, görev takibi, 25 dakikalık odak sayacı, 68 soruluk açıklamalı testler ve 15 çevrimdışı PDF içerir.
+6. sınıf sınav hazırlık uygulaması. Türkiye saatiyle kişisel sınav takvimi, 12 günlük kamp, görev takibi, 25 dakikalık odak sayacı, 68 soruluk açıklamalı testler, 15 çevrimdışı PDF ve **ödev için okul çıkışı arayan sesli yapay zekâ koçu** içerir.
 
-## Sürüm 1.2.0
+## Sürüm 1.3.0
 
+- **Kamp Koçu:** ödev listesi ve hafta içi okul çıkışı araması (varsayılan 16:30).
+- Sesli brifing, mikrofonla/yazarak sohbet, “ödevimi yaptım” işaretleme.
+- Groq bağlantısı: anahtar cihazda veya `GROQ_API_KEY` depo sırrıyla gömülü. Ayrıntılar: [AI-KOC.md](AI-KOC.md).
 - Proje: **sinavkam**
 - Google, GitHub ve e-posta/şifre ile giriş.
 - Uygulama içinde Firebase bağlantı ayarı yok; proje arka planda hazır.
@@ -13,7 +16,7 @@
 - Android paket adı: `Com.company.sinavhazirlik`.
 - Hesap, bulut verisi silme ve yerel JSON yedekleme.
 
-**Canlı kullanım için proje sahibinin Email/Password, Firestore ve güvenlik kurallarını etkinleştirmesi gerekir.** Ayrıntılı adımlar: [FIREBASE.md](FIREBASE.md).
+**Canlı kullanım için proje sahibinin Email/Password, Firestore ve güvenlik kurallarını etkinleştirmesi gerekir.** Yapay zekâ koçu için Groq anahtarı gerekir; anahtar depoya yazılmaz. Ayrıntılı adımlar: [FIREBASE.md](FIREBASE.md).
 
 ## Geliştirme
 
@@ -23,7 +26,7 @@ npm run build
 npm start
 ```
 
-Önizleme portu 3000'dir. Web kaynakları `web/`, Firebase istemci kodu `src/cloud.js`, Android kodu `app/` içindedir. `app/src/main/assets/www/` derleme çıktısıdır; kaynak değişikliklerinden sonra `npm run build` çalıştırın.
+Önizleme portu 3000'dir. Yapay zekâ koçunu yerelde denemek için: `GROQ_API_KEY=gsk_... npm start`. Web kaynakları `web/`, Firebase istemci kodu `src/cloud.js`, Android kodu `app/` içindedir. `app/src/main/assets/www/` derleme çıktısıdır; kaynak değişikliklerinden sonra `npm run build` çalıştırın.
 
 PDF içerikleri `scripts/make_pdfs.py` ile üretilir. Matematik ve Sosyal paylaşılan konu dağılımlarına dayanır; diğerleri genel tekrardır. Uygulama MEB veya okulun resmî uygulaması değildir.
 

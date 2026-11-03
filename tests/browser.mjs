@@ -27,7 +27,7 @@ await page.locator('[data-action="quit-quiz"]').click();await page.locator('.set
 await page.locator('.exam-toggle[data-id="din-1311"] + span').click();await page.reload();assert(!(await page.locator('.exam-toggle[data-id="din-1311"]').isChecked()));await page.locator('.exam-toggle[data-id="din-1311"] + span').click();
 await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:3000/#bugun');await page.waitForSelector('.hero');await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:'test-results/mobile.png',fullPage:true});
 assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'mobile horizontal overflow');
-for(const p of ['takvim','kamp','kutuphane','testler','ayarlar','bulut']){await page.goto('http://127.0.0.1:3000/#'+p);await page.waitForTimeout(100);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'overflow '+p);}
+for(const p of ['takvim','kamp','kutuphane','testler','ayarlar','bulut','aiko']){await page.goto('http://127.0.0.1:3000/#'+p);await page.waitForTimeout(100);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'overflow '+p);}
 let cached=0;
 if(bundled){console.log('Service worker activation is checked on stock Chromium in CI; bundled Lambda Chromium does not activate workers.');}
 else{
@@ -35,10 +35,24 @@ else{
  console.log('Worker registrations:',await page.evaluate(async()=>{const regs=await navigator.serviceWorker.getRegistrations();if(!regs.length){try{await navigator.serviceWorker.register('/sw.js');}catch(e){return {registrationError:String(e)};}}return (await navigator.serviceWorker.getRegistrations()).map(r=>({scope:r.scope,active:r.active?.state,installing:r.installing?.state,waiting:r.waiting?.state}));}));
  try{await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,null,{timeout:30000});}catch(e){console.log('Worker diagnostics:',await page.evaluate(async()=>{const regs=await navigator.serviceWorker.getRegistrations();return {regs:regs.map(r=>({active:r.active?.state,installing:r.installing?.state,waiting:r.waiting?.state})),keys:await caches.keys()};}));for(const w of page.context().serviceWorkers()){console.log('Worker state:',await w.evaluate(()=>({error:self.__installError,done:self.__precacheDone,total:self.__precacheTotal})).catch(String));}throw e;}
  console.log('Service worker controls the page; checking offline cache…');
- cached=await page.evaluate(async()=>{const keys=await caches.keys();const cache=await caches.open(keys.find(k=>k.startsWith('sinav-kampi-')));return (await cache.keys()).length;});assert(cached>=44,'offline cache must include all 44 unique app/PDF/font assets');
+ cached=await page.evaluate(async()=>{const keys=await caches.keys();const cache=await caches.open(keys.find(k=>k.startsWith('sinav-kampi-')));return (await cache.keys()).length;});assert(cached>=47,'offline cache must include all app, AI, PDF and font assets');
  await page.context().setOffline(true);await page.reload();await page.waitForSelector('.cloud-account-card');await page.locator('.bottom-nav [data-nav="kutuphane"]').click();await page.waitForSelector('.resource-card');assert.equal(await page.locator('.resource-card').count(),15);await page.context().setOffline(false);
 }
 
 await page.goto('http://127.0.0.1:3000/#bulut');await page.waitForSelector('[data-cloud="provider"][data-id="google"]');assert.equal(await page.locator('#firebase-config-form').count(),0);assert.equal(await page.locator('[data-cloud="provider"][data-id="github"]').count(),1);await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0);});await page.screenshot({path:'test-results/cloud-mobile.png',fullPage:true});
+await page.goto('http://127.0.0.1:3000/#aiko');await page.waitForSelector('#hw-form');
+assert.equal(await page.locator('#firebase-config-form').count(),0);
+await page.locator('#hw-form [name="title"]').fill('Matematik çalışma kağıdı');await page.locator('#hw-form [name="subject"]').selectOption('matematik');await page.locator('#hw-form button[type="submit"]').click();
+await page.waitForSelector('.hw-row');assert.equal(await page.locator('.hw-row').count(),1);assert.match(await page.locator('.hw-row').innerText(),/Matematik çalışma kağıdı/);
+await page.route('https://api.groq.com/**',r=>r.abort());
+await page.locator('[data-ai="call-now"]').first().click();await page.waitForSelector('#ai-call:not([hidden])');
+await page.waitForSelector('#call-log .call-bubble.coach',{timeout:15000});
+assert.match(await page.locator('#call-caption').innerText(),/Merhaba|akşamlar|ödev/i);
+await page.locator('#call-input').fill('Matematik ödevini yaptım');await page.locator('#call-form .call-send').click();
+await page.waitForFunction(()=>document.querySelectorAll('#call-log .call-bubble').length>=4);
+assert.match(await page.locator('#call-log').innerText(),/tamamlandı olarak işaretlendi/);
+await page.locator('[data-ai="hangup"]').click();assert(await page.locator('#ai-call').isHidden());
+await page.unroute('https://api.groq.com/**');
+await page.screenshot({path:'test-results/aiko.png',fullPage:true});
 assert.deepEqual(errors,[]);console.log('PASS: desktop + 390px mobile, navigation, tasks persistence, calendar/custom exam, timer, PDF filters, 12-question quiz, settings, elective toggle, offline precache ('+cached+' assets), no JS errors.');
 await browser.close();testServer?.kill();

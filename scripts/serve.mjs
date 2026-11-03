@@ -4,6 +4,11 @@ const mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'applicat
 http.createServer(async(req,res)=>{
  try{
   let pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);if(pathname.endsWith('/'))pathname+='index.html';
+  if(pathname==='/ai-config.js'&&process.env.GROQ_API_KEY){
+   res.writeHead(200,{'Content-Type':'application/javascript','Cache-Control':'no-cache'});
+   res.end(`window.KAMP_AI_CONFIG=${JSON.stringify({key:process.env.GROQ_API_KEY,proxy:process.env.GROQ_PROXY_URL||'',model:process.env.GROQ_MODEL||'llama-3.3-70b-versatile'})};`);
+   return;
+  }
   const file=path.resolve(root,'.'+pathname);if(!file.startsWith(root+path.sep))throw Error('Invalid path');
   let data=await readFile(file);
   if(pathname==='/sw.js')data=Buffer.from((await readFile(file,'utf8')).replace('sinav-kampi-v1','sinav-kampi-dev-'+Date.now()));

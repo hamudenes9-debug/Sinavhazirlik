@@ -8,6 +8,11 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.provider.Settings;
 import android.view.View;
 import android.webkit.JavascriptInterface;
@@ -25,14 +30,24 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Locale;
 
 public final class MainActivity extends Activity {
     private WebView web;
     private WebViewAssetLoader assetLoader;
     private String pendingBackup;
+    private TextToSpeech tts;
+    private boolean ttsReady;
+    private boolean ttsFailed;
+    private String pendingSpeech;
+    private SpeechRecognizer recognizer;
+    private boolean pageReady;
+    private boolean pendingAiCall;
     private static final String HOME = "https://appassets.androidplatform.net/assets/www/index.html";
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        pendingAiCall = getIntent() != null && getIntent().getBooleanExtra("ai_call", false);
         getWindow().setStatusBarColor(Color.rgb(246,247,242));
         getWindow().setNavigationBarColor(Color.WHITE);
         assetLoader = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
@@ -67,21 +82,119 @@ public final class MainActivity extends Activity {
                 if ("https".equals(uri.getScheme()) && isAuthHost(uri.getHost())) return false;
                 return true; // Bundled application: never navigate to an untrusted remote page.
             }
-            @Override public void onPageFinished(WebView view, String url) { refreshStatus(); }
+            @Override public void onPageFinished(WebView view, String url) { pageReady = true; refreshStatus(); deliverAiCall(); }
         });
         if (savedInstanceState == null) web.loadUrl(HOME); else web.restoreState(savedInstanceState);
     }
     @Override protected void onSaveInstanceState(Bundle state) { super.onSaveInstanceState(state); web.saveState(state); }
-    @Override protected void onResume() { super.onResume(); refreshStatus(); }
+    @Override protected void onResume() { super.onResume(); refreshStatus(); deliverAiCall(); }
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent); setIntent(intent);
+        if (intent != null && intent.getBooleanExtra("ai_call", false)) {
+            pendingAiCall = true;
+            if (pageReady) deliverAiCall(); else if (web != null) web.loadUrl(HOME);
+        }
+    }
+    @Override protected void onPause() {
+        super.onPause();
+        if (tts != null) tts.stop();
+        stopListening();
+    }
+    private void deliverAiCall() {
+        if (!pendingAiCall || web == null || !pageReady) return;
+        pendingAiCall = false;
+        web.postDelayed(() -> web.evaluateJavascript("window.KampAI&&window.KampAI.openFromNotification()", null), 700);
+    }
+    private void js(String script) { if (web != null) web.post(() -> web.evaluateJavascript(script, null)); }
+    private void initTts() {
+        if (tts != null || ttsFailed) return;
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                int result = tts.setLanguage(Locale.forLanguageTag("tr-TR"));
+                ttsReady = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED;
+                if (!ttsReady) {
+                    int fallback = tts.setLanguage(Locale.getDefault());
+                    ttsReady = fallback != TextToSpeech.LANG_MISSING_DATA && fallback != TextToSpeech.LANG_NOT_SUPPORTED;
+                }
+            }
+            if (!ttsReady) {
+                ttsFailed = true;
+                pendingSpeech = null;
+                js("window.KampAI&&window.KampAI._speakUnavailable()");
+                return;
+            }
+            if (pendingSpeech != null) {
+                tts.speak(pendingSpeech, TextToSpeech.QUEUE_FLUSH, null, "ai-" + System.currentTimeMillis());
+                pendingSpeech = null;
+            }
+        });
+        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override public void onStart(String id) { }
+            @Override public void onDone(String id) { js("window.KampAI&&window.KampAI._speakDone()"); }
+            @Override public void onError(String id) { js("window.KampAI&&window.KampAI._speakDone()"); }
+        });
+    }
+    private void releaseRecognizer(boolean cancel) {
+        if (recognizer == null) return;
+        try { if (cancel) recognizer.cancel(); } catch (Exception ignored) { }
+        try { recognizer.destroy(); } catch (Exception ignored) { }
+        recognizer = null;
+    }
+    private void stopListening() { releaseRecognizer(true); }
+    private void startListening() {
+        try {
+            releaseRecognizer(false);
+            recognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            recognizer.setRecognitionListener(new RecognitionListener() {
+                @Override public void onReadyForSpeech(Bundle params) { js("window.KampAI&&window.KampAI._onListening()"); }
+                @Override public void onBeginningOfSpeech() { }
+                @Override public void onRmsChanged(float rmsdB) { }
+                @Override public void onBufferReceived(byte[] buffer) { }
+                @Override public void onEndOfSpeech() { }
+                @Override public void onError(int error) {
+                    releaseRecognizer(false);
+                    js("window.KampAI&&window.KampAI._onSpeechError(" + error + ")");
+                }
+                @Override public void onResults(Bundle results) {
+                    ArrayList<String> list = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    String text = list != null && !list.isEmpty() ? list.get(0) : "";
+                    releaseRecognizer(false);
+                    if (text != null && !text.isEmpty()) js("window.KampAI&&window.KampAI._onSpeech(" + JSONObject.quote(text) + ")");
+                }
+                @Override public void onPartialResults(Bundle partialResults) { }
+                @Override public void onEvent(int eventType, Bundle params) { }
+            });
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
+                    .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "tr-TR")
+                    .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                    .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+                    .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
+            recognizer.startListening(intent);
+        } catch (Exception e) {
+            js("window.KampAI&&window.KampAI._onSpeechError(0)");
+        }
+    }
     private void refreshStatus() { if(web!=null) web.post(() -> web.evaluateJavascript("window.nativeStatusChanged && window.nativeStatusChanged()",null)); }
     private void message(String text) { runOnUiThread(()->Toast.makeText(this,text,Toast.LENGTH_LONG).show()); }
     private boolean hasNotifications() { return Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED; }
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(code,permissions,results);
         if(code==33) { message(results.length>0 && results[0]==PackageManager.PERMISSION_GRANTED ? "Bildirim izni verildi. Hatırlatma düğmesini açabilirsin." : "Bildirim izni verilmedi. Telefon ayarlarından izin verebilirsin."); refreshStatus(); }
+        if(code==34) {
+            boolean granted = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
+            js("window.KampAI&&window.KampAI._onMicPermission(" + granted + ")");
+            message(granted ? "Mikrofon izni verildi. Koç seni dinleyebilir." : "Mikrofon izni verilmedi. Yazarak devam edebilirsin.");
+        }
     }
     @Override public void onBackPressed() { if(web.canGoBack()) web.goBack(); else super.onBackPressed(); }
-    @Override protected void onDestroy() { if(web!=null){web.removeJavascriptInterface("AndroidBridge");web.destroy();}super.onDestroy(); }
+    @Override protected void onDestroy() {
+        stopListening();
+        if (tts != null) { try { tts.stop(); tts.shutdown(); } catch (Exception ignored) { } tts = null; }
+        if (web != null) { web.removeJavascriptInterface("AndroidBridge"); web.destroy(); }
+        super.onDestroy();
+    }
     @Override protected void onActivityResult(int request,int result,Intent data) {
         super.onActivityResult(request,result,data);
         if(request==41 && result==RESULT_OK && data!=null && data.getData()!=null && pendingBackup!=null) {
@@ -139,6 +252,37 @@ public final class MainActivity extends Activity {
             try{startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,Uri.parse("package:"+getPackageName())));}catch(Exception e){openAppSettings();}
         }
         @JavascriptInterface public void openPDF(String file){MainActivity.this.openPDF(file);}
+        @JavascriptInterface public void speak(String text) {
+            if (text == null || text.isEmpty()) return;
+            final String clean = text.length() > 3600 ? text.substring(0, 3600) : text;
+            runOnUiThread(() -> {
+                if (ttsFailed) { js("window.KampAI&&window.KampAI._speakUnavailable()"); return; }
+                if (!ttsReady) { pendingSpeech = clean; initTts(); return; }
+                tts.stop();
+                int result = tts.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "ai-" + System.currentTimeMillis());
+                if (result == TextToSpeech.ERROR) js("window.KampAI&&window.KampAI._speakDone()");
+            });
+        }
+        @JavascriptInterface public void stopVoice() { runOnUiThread(() -> { if (tts != null) tts.stop(); stopListening(); }); }
+        @JavascriptInterface public void stopListening() { runOnUiThread(MainActivity.this::stopListening); }
+        @JavascriptInterface public String listen() {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 34));
+                return "{\"ok\":false,\"message\":\"Mikrofon izni isteniyor…\"}";
+            }
+            if (!SpeechRecognizer.isRecognitionAvailable(MainActivity.this)) return "{\"ok\":false,\"message\":\"Bu cihazda konuşma tanıma yok. Yazarak devam edebilirsin.\"}";
+            runOnUiThread(MainActivity.this::startListening);
+            return "{\"ok\":true}";
+        }
+        @JavascriptInterface public String voiceStatus() {
+            return "{\"tts\":" + ttsReady + ",\"stt\":" + SpeechRecognizer.isRecognitionAvailable(MainActivity.this) + "}";
+        }
+        @JavascriptInterface public void configureAiCall(String json) { AiCall.configure(MainActivity.this, json); }
+        @JavascriptInterface public String aiCallStatus() {
+            try { return new JSONObject().put("enabled", AiCall.enabled(MainActivity.this)).put("time", AiCall.time(MainActivity.this)).toString(); }
+            catch (Exception e) { return "{}"; }
+        }
+        @JavascriptInterface public String testAiCall() { return AiCall.notifyNow(MainActivity.this, true); }
         @JavascriptInterface public void sharePDF(String file) {
             try{Uri uri=FileProvider.getUriForFile(MainActivity.this,getPackageName()+".files",copyPDF(file));Intent send=new Intent(Intent.ACTION_SEND).setType("application/pdf").putExtra(Intent.EXTRA_STREAM,uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(send,"PDF’yi paylaş veya kaydet"));}catch(Exception e){message("PDF paylaşılamadı.");}
         }

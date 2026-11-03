@@ -7,5 +7,8 @@ public final class BootReceiver extends BroadcastReceiver {
   if((Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())||Intent.ACTION_MY_PACKAGE_REPLACED.equals(i.getAction()))&&ReminderEngine.enabled(c)){
    try{c.startForegroundService(new Intent(c,ReminderService.class).setAction(ReminderService.START));}catch(Exception ignored){/* User can reopen after manufacturer restrictions. */}
   }
+  if(AiCall.enabled(c)){
+   try{AiCall.schedule(c);}catch(Exception ignored){/* Next app launch reschedules. */}
+  }
  }
 }
