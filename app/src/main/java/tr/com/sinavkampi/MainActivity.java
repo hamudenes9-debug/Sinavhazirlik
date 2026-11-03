@@ -12,6 +12,7 @@ import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import android.speech.tts.UtteranceProgressListener;
 import android.provider.Settings;
 import android.view.View;
@@ -125,8 +126,8 @@ public final class MainActivity extends Activity {
                 try {
                     tts.setSpeechRate(1.12f);
                     tts.setPitch(1.0f);
-                    TextToSpeech.Voice best = null;
-                    for (TextToSpeech.Voice voice : tts.getVoices()) {
+                    Voice best = null;
+                    for (Voice voice : tts.getVoices()) {
                         if (!"tr".equals(voice.getLocale().getLanguage())) continue;
                         if (voice.isNetworkConnectionRequired()) continue; // çevrimdışı ve hızlı ses
                         if (best == null || voice.getQuality() > best.getQuality()) best = voice;
