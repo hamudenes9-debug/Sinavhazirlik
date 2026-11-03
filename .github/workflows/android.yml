@@ -28,6 +28,14 @@ jobs:
       - name: Test offline application and mobile layout
         id: browser
         run: set -o pipefail; timeout 120s env PLAYWRIGHT_CHROMIUM=system npm run test:browser 2>&1 | tee browser-test.log
+      - name: Report test failure
+        if: failure()
+        run: |
+          for f in browser-test.log cloud-test.log firestore-test.log; do
+            if [ -f "$f" ]; then
+              echo "::error title=$f::$(tail -c 1800 "$f" | tr '\n' ' ')"
+            fi
+          done
       - name: Preserve test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
