@@ -64,6 +64,7 @@ public final class MainActivity extends Activity {
                     if (path.endsWith(".pdf")) { openPDF(path.substring(path.lastIndexOf('/')+1)); return true; }
                     return false;
                 }
+                if ("https".equals(uri.getScheme()) && isAuthHost(uri.getHost())) return false;
                 return true; // Bundled application: never navigate to an untrusted remote page.
             }
             @Override public void onPageFinished(WebView view, String url) { refreshStatus(); }
@@ -90,6 +91,10 @@ public final class MainActivity extends Activity {
                 pendingBackup=null;message("İlerleme yedeğin kaydedildi.");
             } catch(Exception e){message("Yedek kaydedilemedi. Başka bir klasör deneyebilirsin.");}
         }
+    }
+    private static boolean isAuthHost(String host) {
+        if (host == null) return false;
+        return host.equals("sinavkam.firebaseapp.com") || host.equals("accounts.google.com") || host.equals("accounts.google.com.tr") || host.equals("github.com") || host.equals("api.github.com") || host.endsWith(".googleapis.com") || host.endsWith(".gstatic.com");
     }
     private static boolean validPdf(String file) { return file!=null && file.matches("[a-z0-9-]+\\.pdf"); }
     private void openPDF(String file) {

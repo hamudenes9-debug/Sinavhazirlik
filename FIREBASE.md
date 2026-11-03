@@ -1,4 +1,4 @@
-# Sınav Kampı — sinavkam Firebase kurulumu
+# Sınav Kampı — sinavkam Firebase kurulumu (proje sahibi için)
 
 ## Bağlanan proje
 
@@ -13,11 +13,15 @@ Bu sürüm, Android WebView içinde **Firebase Web SDK** kullanır. Bu nedenle A
 
 `apiKey` bir istemci tanımlayıcısıdır; yönetici şifresi değildir. Buna rağmen erişim güvenliği kurallarla sağlanmalıdır. Admin SDK JSON dosyası, servis hesabı özel anahtarı veya Firebase şifresi uygulamaya konmaz. Bu projede Admin SDK kullanılmaz.
 
-## Proje sahibinin yapacağı üç ayar
+## Uygulama içinde Firebase ayarı yok
+
+Kullanıcıya proje ID, API key veya bağlantı formu gösterilmez. `src/firebase-config.js` içindeki sinavkam yapılandırması pakete gömülür. Aşağıdaki ayarlar yalnızca proje sahibinin Firebase Console’da yapacağı kurulumdur.
+
+## Proje sahibinin yapacağı ayarlar
 
 Kodun bağlanması, hesabınızdaki Firebase servislerini kendiliğinden etkinleştirmez veya kuralları yayımlamaz. Bu çalışma ortamında Firebase hesabınıza yönetici oturumu yoktur.
 
-1. [Authentication sağlayıcıları](https://console.firebase.google.com/project/sinavkam/authentication/providers): **Email/Password** sağlayıcısını etkinleştirin. Google ile giriş bu sürümde kullanılmaz.
+1. [Authentication sağlayıcıları](https://console.firebase.google.com/project/sinavkam/authentication/providers): **Email/Password**, **Google** ve **GitHub** sağlayıcılarını etkinleştirin. GitHub için GitHub OAuth App oluşturun; Authorization callback URL olarak `https://sinavkam.firebaseapp.com/__/auth/handler` girin, Client ID/Client Secret değerlerini Firebase GitHub sağlayıcısına kaydedin. Google için destek e-postası seçin.
 2. [Firestore](https://console.firebase.google.com/project/sinavkam/firestore): veritabanı yoksa **Create database** ile oluşturun. Üretim modunu seçin. Konum seçimi kalıcıdır; mevcut veritabanınız varsa onu kullanın. Uygulama `(default)` veritabanını kullanır.
 3. [Firestore Rules](https://console.firebase.google.com/project/sinavkam/firestore/rules): bu depodaki `firestore.rules` içeriğinin tamamını editöre yapıştırıp **Publish** edin. Test modu süresi dolunca erişim kapanır; herkese açık kurallar kullanmayın.
 
@@ -34,7 +38,7 @@ npm run deploy:rules
 
 ## Web önizleme alanı
 
-E-posta/şifre girişinde çoğunlukla ek alan ayarı gerekmez. Firebase `auth/unauthorized-domain` verirse Authentication → Settings → Authorized domains bölümünde uygulamayı açtığınız gerçek alan adını ekleyin. `localhost` geliştirme için genellikle zaten izinlidir. Android WebView sabit `appassets.androidplatform.net` yerel alanını kullanır; gerektiğinde onu da ekleyin. Bu bir uzak sunucu değil, sadece uygulama içindeki yerel dosyaların güvenli origin'idir.
+Google/GitHub girişinde kullandığınız web alan adı ve APK içindeki `appassets.androidplatform.net` yetkili alanlarda olmalıdır. E-posta/şifre girişinde çoğunlukla ek alan ayarı gerekmez. Firebase `auth/unauthorized-domain` verirse Authentication → Settings → Authorized domains bölümünde uygulamayı açtığınız gerçek alan adını ekleyin. `localhost` geliştirme için genellikle zaten izinlidir. Android WebView sabit `appassets.androidplatform.net` yerel alanını kullanır; gerektiğinde onu da ekleyin. Bu bir uzak sunucu değil, sadece uygulama içindeki yerel dosyaların güvenli origin'idir.
 
 API anahtarına kısıtlama eklediyseniz WebView/Web SDK isteklerini de kapsadığından emin olun. Yalnızca Android paket adı/SHA-1 kısıtlı bir anahtar Web SDK çağrılarını reddedebilir. Böyle bir durumda Console'da Web uygulaması oluşturup onun istemci yapılandırmasını kullanın. Kısıtlamayı kaldırmadan önce kuralları yayımlayın; App Check production için önerilir fakat bu sürümde zorunlu tutulmamıştır.
 
@@ -77,11 +81,14 @@ npm run test:browser   # sunucu yoksa kendisi başlatır
 
 Emulator testleri `demo-sinav-kampi` projesini kullanır; canlı `sinavkam` verisine dokunmaz. GitHub Actions bu testleri ve APK derlemesini çalıştırır; v1.1.0 için kurallar, iki cihazlı bulut senaryosu, çevrimdışı önbellek ve Android derlemesi CI’da geçmiştir. Emulator başarısı canlı proje ayarlarının yayımlandığını kanıtlamaz. Canlı doğrulama için yukarıdaki üç ayardan sonra gerçek bir hesapla giriş ve iki cihazda eşitleme kontrolü yapılmalıdır.
 
-Kurulabilir APK: https://github.com/hamudenes9-debug/Sinavhazirlik/releases/tag/v1.1.0
+Kurulabilir APK: https://github.com/hamudenes9-debug/Sinavhazirlik/releases/tag/v1.2.0
 
 ## Sorun giderme
 
-- `auth/operation-not-allowed`: Email/Password kapalı.
+- `auth/operation-not-allowed`: İlgili sağlayıcı (Email/Password, Google veya GitHub) kapalı.
+- `auth/popup-blocked`: Tarayıcı açılır pencereyi engelledi; uygulama yönlendirmeli girişi dener.
+- `auth/unauthorized-domain`: Alan adı yetkili değil.
+- Google WebView içinde `disallowed_useragent` gösterirse Android WebView OAuth’u kısıtlıyor demektir; e-posta/şifre ile giriş veya web sürümü kullanın.
 - `permission-denied`: Kurallar yayımlanmamış veya yanlış veritabanına yayımlanmış.
 - `failed-precondition`: Firestore oluşturulmamış.
 - `auth/unauthorized-domain`: Web alanı yetkili değil.

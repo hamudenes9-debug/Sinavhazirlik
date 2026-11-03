@@ -1,5 +1,6 @@
-/* Takvim: kullanıcının ilettiği 2026–2027 1. dönem 1. ortak sınav takvimi.
- * Yalnızca 6. sınıf sütunu. Ders saati yerine ders sırası kullanılır. */
+/* Takvim: OrtakokulSinav.PDF — okul geneli / ülke geneli ortak yazılılar.
+ * 6. sınıf için geçerli ortak sınavlar. Tek sınav olan günlerde 2. ders saati esas alınır;
+ * 10 Kasım için okul planlamasına göre 4. ders saati notu ayrıca gösterilir. */
 window.KAMP_DATA = {
  subjects: {
   fen: {name:'Fen Bilimleri', short:'Fen', color:'green', icon:'flask', verified:false, topics:['Destek ve hareket sistemi','Kuvvet ve hareket','Sindirim sistemi'], note:'Genel tekrar notudur. Okulunun konu dağılımı henüz paylaşılmadı.'},
@@ -16,17 +17,11 @@ window.KAMP_DATA = {
   robotik: {name:'Robotik Kodlama', short:'Rob', color:'blue', icon:'code', verified:false, topics:['Algoritmalar','Sıralı adımlar','Döngüler ve koşullar'], note:'Genel algoritma tekrarıdır. Kullanılan program veya robot kitini kapsamına göre çalış.'}
  },
  exams: [
-  {id:'fen-0311',subject:'fen',date:'2026-11-03',period:2},
-  {id:'arapca-0411',subject:'arapca',date:'2026-11-04',period:3},
-  {id:'secingilizce-0411',subject:'secingilizce',date:'2026-11-04',period:5,optional:true},
-  {id:'tdb-0511',subject:'tdb',date:'2026-11-05',period:4},
-  {id:'sosyal-0611',subject:'sosyal',date:'2026-11-06',period:2},
-  {id:'kuran-0911',subject:'kuran',date:'2026-11-09',period:3},
-  {id:'siyer-0911',subject:'siyer',date:'2026-11-09',period:5},
-  {id:'turkce-1011',subject:'turkce',date:'2026-11-10',period:4},
-  {id:'matematik-1111',subject:'matematik',date:'2026-11-11',period:2},
-  {id:'ingilizce-1211',subject:'ingilizce',date:'2026-11-12',period:2},
-  {id:'din-1311',subject:'din',date:'2026-11-13',period:2},
-  {id:'robotik-1311',subject:'robotik',date:'2026-11-13',period:5,optional:true}
+  {id:'fen-0311',subject:'fen',date:'2026-11-03',period:2,common:true},
+  {id:'sosyal-0611',subject:'sosyal',date:'2026-11-06',period:2,common:true},
+  {id:'turkce-1011',subject:'turkce',date:'2026-11-10',period:2,common:true,periodNote:'Okul planlamasına göre 4. ders saatinde de uygulanabilir.'},
+  {id:'matematik-1111',subject:'matematik',date:'2026-11-11',period:2,common:true,note:'6. sınıf matematik sınavı ülke geneli ortak yazılı kapsamında 11 Kasım 2026 Çarşamba günü yapılır.'},
+  {id:'ingilizce-1211',subject:'ingilizce',date:'2026-11-12',period:2,common:true},
+  {id:'din-1311',subject:'din',date:'2026-11-13',period:2,common:true}
  ]
 };

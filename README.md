@@ -2,10 +2,12 @@
 
 6. sınıf sınav hazırlık uygulaması. Türkiye saatiyle kişisel sınav takvimi, 12 günlük kamp, görev takibi, 25 dakikalık odak sayacı, 68 soruluk açıklamalı testler ve 15 çevrimdışı PDF içerir.
 
-## Firebase sürümü 1.1.0
+## Sürüm 1.2.0
 
 - Proje: **sinavkam**
-- E-posta/şifre ile Firebase Authentication.
+- Google, GitHub ve e-posta/şifre ile giriş.
+- Uygulama içinde Firebase bağlantı ayarı yok; proje arka planda hazır.
+- OrtakokulSinav.PDF kaynaklı 6. sınıf ortak sınav takvimi.
 - İsteğe bağlı bulut ilerleme eşitlemesi.
 - Takma adlı, isteğe bağlı kamp sıralaması.
 - Android paket adı: `Com.company.sinavhazirlik`.

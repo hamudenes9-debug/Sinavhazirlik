@@ -208,11 +208,11 @@ for key,id in [('matematik','matematik-deneme'),('sosyal','sosyal-deneme')]:
 
 # A4 personal schedule.
 pdf=PDF(OUT/'sinav-takvimi.pdf','Sınav takvimim · Kasım 2026')
-pdf.box('Kaynak: Kullanıcının ilettiği okul sınav takviminin 6. sınıf sütunu. Zil saatleri verilmediği için ders sıraları yazılmıştır. Seçmeli derslerini okulundaki ders seçiminle kontrol et.')
-rows=[('3 Kasım Salı','2. ders','Fen Bilimleri'),('4 Kasım Çarşamba','3. / 5. ders','Arapça / Seçmeli İngilizce'),('5 Kasım Perşembe','4. ders','Temel Dini Bilgiler'),('6 Kasım Cuma','2. ders','Sosyal Bilgiler'),('9 Kasım Pazartesi','3. / 5. ders','Kur’an-ı Kerim / Peygamberimizin Hayatı'),('10 Kasım Salı','4. ders','Türkçe'),('11 Kasım Çarşamba','2. ders','Matematik'),('12 Kasım Perşembe','2. ders','İngilizce'),('13 Kasım Cuma','2. / 5. ders','Din Kültürü / Robotik Kodlama')]
+pdf.box('Kaynak: OrtakokulSinav.PDF — okul geneli ortak yazılı sınav takvimi. 6. sınıf için geçerli ortak sınavlar gösterilir. Tek sınav olan günlerde 2. ders saati esas alınmıştır; sınav süresi 40 dakikadır.')
+rows=[('3 Kasım Salı','2. ders','Fen Bilimleri'),('6 Kasım Cuma','2. ders','Sosyal Bilgiler'),('10 Kasım Salı','2. ders (okul planlamasına göre 4. ders olabilir)','Türkçe'),('11 Kasım Çarşamba','2. ders','Matematik — ülke geneli ortak yazılı'),('12 Kasım Perşembe','2. ders','İngilizce'),('13 Kasım Cuma','2. ders','Din Kültürü ve Ahlak Bilgisi')]
 for date,period,lesson in rows:pdf.section(date+' · '+period,lesson)
-pdf.box('Son kontrol: İşlenen konular, sınav saati, seçmeli dersler ve okul duyuruları değişebilir. Güncel okul duyurusunu esas al.')
+pdf.box('Not: 6. sınıf Matematik sınavı, ülke geneli ortak yazılı kapsamında 11 Kasım 2026 Çarşamba günü yapılır. 10 Kasım sınavları okul müdürlüğünün planlamasına göre 4. ders saatinde uygulanabilir. İhtiyaç hâlinde farklı ders saati kullanılabilir; güncel okul duyurusunu esas al.')
 pdf.save()
-resources.append({'id':'sinav-takvimi','subject':'takvim','title':'Kişisel sınav takvimim','subtitle':'3–13 Kasım 2026 · 6. sınıf','type':'Takvim','verified':True,'file':'sinav-takvimi.pdf'})
+resources.append({'id':'sinav-takvimi','subject':'takvim','title':'Kişisel sınav takvimim','subtitle':'3–13 Kasım 2026 · 6. sınıf ortak sınavlar','type':'Takvim','verified':True,'file':'sinav-takvimi.pdf'})
 (ROOT/'web'/'content.js').write_text('window.KAMP_CONTENT = '+json.dumps({'resources':resources,'notes':notes,'quizzes':quizzes},ensure_ascii=False)+';\n')
 print(f'Created {len(resources)} PDFs and {sum(map(len,quizzes.values()))} quiz questions.')

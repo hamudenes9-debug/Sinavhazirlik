@@ -1,6 +1,6 @@
 import { initializeApp, deleteApp } from 'firebase/app';
 import DEFAULT_CONFIG from './firebase-config.js';
-import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, GithubAuthProvider, signOut, sendPasswordResetEmail, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from 'firebase/auth';
 import { getFirestore, doc, runTransaction, onSnapshot, query, collection, orderBy, limit, getDocs, serverTimestamp, deleteDoc } from 'firebase/firestore';
 
 const CONFIG_KEY='sinav-kampi-firebase-config-v1', OPT_KEY='sinav-kampi-cloud-opt-v1';
@@ -32,6 +32,13 @@ function error(e){const code=e?.code||'';const map={
  'unavailable':'Firebase’e ulaşılamıyor. Yerel kaydın korunuyor; bağlantı gelince tekrar deneyebilirsin.',
  'failed-precondition':'Firestore veritabanı henüz hazır değil. Firebase Console’da Firestore’u oluştur.',
  'auth/invalid-api-key':'Firebase apiKey bilgisini kontrol et.',
+ 'auth/popup-blocked':'Giriş penceresi engellendi. Tarayıcı açılır pencere iznini kontrol et veya tekrar dene.',
+ 'auth/popup-closed-by-user':'Giriş penceresi kapatıldı. Tekrar deneyebilirsin.',
+ 'auth/cancelled-popup-request':'Önceki giriş penceresi hâlâ açık. Onu kapatıp tekrar dene.',
+ 'auth/account-exists-with-different-credential':'Bu e-posta başka bir giriş yöntemiyle kayıtlı. Önce o yöntemle giriş yap.',
+ 'auth/operation-not-supported-in-this-environment':'Bu ortamda sağlayıcı girişi desteklenmiyor. E-posta/şifre ile giriş yapmayı dene.',
+ 'auth/web-storage-unsupported':'Giriş için tarayıcı depolaması gerekli. Gizli mod veya WebView kısıtlaması olabilir.',
+ 'auth/internal-error':'Giriş sağlayıcısı yanıtı işlenemedi. Tekrar dene veya e-posta/şifre kullan.',
  'app/invalid-app-argument':'Firebase uygulama bilgileri eşleşmiyor. Web uygulaması yapılandırmasını kontrol et.'
  };return map[code]||'İşlem tamamlanamadı. Bağlantını ve Firebase ayarlarını kontrol edip tekrar dene.';}
 function fail(e){lastError=error(e);statusText='Bağlantı kurulamadı';emit();return {ok:false,message:lastError};}
@@ -45,6 +52,7 @@ async function boot(){
   await setPersistence(auth,browserLocalPersistence);
   if(token!==generation)return;
   statusText='Giriş bekleniyor';
+  getRedirectResult(auth).catch(e=>{if(token===generation)fail(e);});
   onAuthStateChanged(auth,async next=>{
    if(token!==generation)return;
    unsubPrivate?.();unsubBoard?.();unsubPrivate=null;unsubBoard=null;operationEpoch++;syncing=false;dirty=false;user=next;uid=next?.uid||null;rows=[];lastError='';
@@ -117,6 +125,21 @@ async function enableBoard(enabled,name){
  boardOptIn=false;operationEpoch++;savePrefs();unsubBoard?.();unsubBoard=null;if(activeSync)await activeSync.catch(()=>{});
  try{await deleteDoc(boardRef());lastError='';emit();return {ok:true,message:'Takma adın ve skorun listeden kaldırıldı.'};}catch(e){boardOptIn=true;savePrefs();return fail(e);}
 }
+async function authenticateWithProvider(providerName){
+ if(!auth)return {ok:false,message:'Bağlantı hazır değil. Uygulamayı yeniden açmayı dene.'};
+ if(busy)return {ok:false,message:'Önce devam eden giriş işlemini bekle.'};
+ const provider=providerName==='google'?new GoogleAuthProvider():providerName==='github'?new GithubAuthProvider():null;
+ if(!provider)return {ok:false,message:'Bilinmeyen giriş yöntemi.'};
+ if(providerName==='google')provider.setCustomParameters({prompt:'select_account'});
+ busy=true;lastError='';emit();
+ try{
+  if(window.AndroidBridge){await signInWithRedirect(auth,provider);return {ok:true,message:'Giriş sayfasına yönlendiriliyorsun…'};}
+  await signInWithPopup(auth,provider);return {ok:true,message:'Giriş yapıldı.'};
+ }catch(e){
+  if(e?.code==='auth/popup-blocked'&&!window.AndroidBridge){try{await signInWithRedirect(auth,provider);return {ok:true,message:'Giriş sayfasına yönlendiriliyorsun…'};}catch(err){return fail(err);}}
+  return fail(e);
+ }finally{busy=false;emit();}
+}
 async function authenticate(mode,email,password){
  if(busy)return {ok:false,message:'Önce devam eden giriş işlemini bekle.'};
  if(!auth)return {ok:false,message:'Önce Firebase bağlantı bilgilerini kaydet.'};
@@ -137,7 +160,7 @@ window.KampCloud={
  configure(value){const c=validConfig(value);if(!c)return {ok:false,message:'apiKey ve projectId gerekli. Web App ID bu sürümde isteğe bağlı; Android App ID’yi bu alana yazma. Servis hesabı anahtarı kullanma.'};config=c;try{localStorage.setItem(CONFIG_KEY,JSON.stringify(c));}catch{return {ok:false,message:'Bağlantı bilgileri cihazda kaydedilemedi.'};}boot();return {ok:true,message:'Firebase bilgileri kaydedildi. Şimdi giriş yapabilirsin.'};},
  async disconnect(){const token=++generation;unsubPrivate?.();unsubBoard?.();if(auth)await signOut(auth).catch(()=>{});if(app)await deleteApp(app).catch(()=>{});app=null;auth=null;db=null;user=null;uid=null;optIn=false;boardOptIn=false;config={...DEFAULT_CONFIG};rows=[];lastError='';localStorage.removeItem(CONFIG_KEY);boot();return {ok:true,message:'Oturum kapatıldı ve varsayılan sinavkam ayarlarına dönüldü. Bulut kaydı silinmedi.'};},
  changed(){queueSync();},
- syncNow,enableSync,enableBoard,refreshBoard,authenticate,resetPassword,logout,removeCloudData,
+ syncNow,enableSync,enableBoard,refreshBoard,authenticate,authenticateWithProvider,resetPassword,logout,removeCloudData,
  validNickname,
  getState(){return {configured:!!config,config,uid,email:user?.email||'',syncEnabled:optIn,boardEnabled:boardOptIn,nickname,status:statusText,error:lastError,lastSync,busy,syncing,rows,boardLoading,online:!offline()};}
 };
