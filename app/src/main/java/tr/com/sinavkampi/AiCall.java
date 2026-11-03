@@ -11,131 +11,136 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import org.json.JSONArray;
 import org.json.JSONObject;
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
-/** Okul çıkışı yapılan "Kamp Koçu" aramasının zamanlaması ve bildirimi. */
+/** Okul çıkışı aramaları ve teslim öncesi hatırlatmalar için alarm planı. */
 final class AiCall {
     static final String CHANNEL = "ai_call_v1";
     static final int NOTIFICATION_ID = 102;
-    static final ZoneId ZONE = ZoneId.of("Europe/Istanbul");
+    static final int MAX_EVENTS = 12;
+    static final int BASE_REQUEST = 30;
 
     private AiCall() {}
 
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences("sinav-kampi", Context.MODE_PRIVATE); }
     static boolean enabled(Context c) { return prefs(c).getBoolean("aiEnabled", false); }
-    static String time(Context c) { return prefs(c).getString("aiTime", "16:30"); }
 
-    /** Web katmanından gelen {enabled, time, pending, first, exam} ayarlarını saklar. */
+    /** Web katmanından gelen {enabled, name, events:[{at,kind,title,text}]} planını saklar. */
     static void configure(Context c, String json) {
         if (json != null) {
             try {
                 JSONObject data = new JSONObject(json);
-                String value = data.optString("time", "16:30");
-                if (!value.matches("([01]\\d|2[0-3]):[0-5]\\d")) value = "16:30";
+                JSONArray events = data.optJSONArray("events");
                 prefs(c).edit()
                         .putBoolean("aiEnabled", data.optBoolean("enabled", false))
-                        .putString("aiTime", value)
+                        .putString("aiName", data.optString("name", ""))
                         .putInt("aiPending", Math.max(0, data.optInt("pending", 0)))
-                        .putString("aiFirst", data.optString("first", ""))
-                        .putString("aiExam", data.optString("exam", ""))
+                        .putString("aiEvents", events == null ? "[]" : events.toString())
                         .apply();
-            } catch (Exception ignored) { /* Geçersiz ayar eski planı bozmaz. */ }
+            } catch (Exception ignored) { /* Geçersiz plan eski planı bozmaz. */ }
         }
         schedule(c);
     }
 
-    /** Hafta içi (Pzt-Cum) seçilen saatte bir sonraki aramayı planlar. */
+    /** Planlanmış bütün alarmları temizleyip güncel listeyi kurar. */
     static void schedule(Context c) {
         AlarmManager am = c.getSystemService(AlarmManager.class);
-        PendingIntent pi = alarmIntent(c);
-        am.cancel(pi);
-        if (!enabled(c)) {
-            prefs(c).edit().remove("aiNextAt").apply();
-            return;
-        }
-        long at = nextCall(System.currentTimeMillis(), time(c));
-        if (at <= 0) return;
-        prefs(c).edit().putLong("aiNextAt", at).apply();
+        for (int slot = 0; slot < MAX_EVENTS; slot++) am.cancel(alarmIntent(c, slot, null));
+        if (!enabled(c)) return;
+        long now = System.currentTimeMillis();
+        int slot = 0;
         try {
-            if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
-            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
-        } catch (SecurityException e) {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
-        }
-    }
-
-    static long nextCall(long now, String hhmm) {
-        try {
-            LocalTime target = LocalTime.parse(hhmm);
-            ZonedDateTime candidate = Instant.ofEpochMilli(now).atZone(ZONE).toLocalDate().atTime(target).atZone(ZONE);
-            for (int i = 0; i < 8; i++) {
-                DayOfWeek day = candidate.getDayOfWeek();
-                if (day.getValue() <= 5 && candidate.toInstant().toEpochMilli() > now + 30_000L) return candidate.toInstant().toEpochMilli();
-                candidate = candidate.plusDays(1);
+            JSONArray events = new JSONArray(prefs(c).getString("aiEvents", "[]"));
+            for (int i = 0; i < events.length() && slot < MAX_EVENTS; i++) {
+                JSONObject event = events.optJSONObject(i);
+                if (event == null) continue;
+                long at = event.optLong("at", 0L);
+                if (at <= now + 5000L) continue;
+                PendingIntent pi = alarmIntent(c, slot, event);
+                try {
+                    if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+                    else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+                } catch (SecurityException e) {
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+                }
+                slot++;
             }
         } catch (Exception ignored) { }
-        return 0L;
+        prefs(c).edit().putInt("aiScheduled", slot).apply();
     }
 
     static void channels(Context c) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         NotificationChannel calls = new NotificationChannel(CHANNEL, "Kamp Koçu aramaları", NotificationManager.IMPORTANCE_HIGH);
-        calls.setDescription("Okul çıkışı ödev konuşması için gelen arama bildirimi.");
+        calls.setDescription("Okul çıkışı ödev sorması ve teslim öncesi hatırlatma araması.");
         calls.enableVibration(true);
         nm.createNotificationChannel(calls);
     }
 
-    static PendingIntent openCall(Context c) {
+    static PendingIntent openCall(Context c, String kind) {
         Intent intent = new Intent(c, MainActivity.class)
                 .setAction("tr.com.sinavkampi.AI_CALL")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra("ai_call", true);
+                .putExtra("ai_call", true)
+                .putExtra("ai_kind", kind == null ? "intake" : kind);
         return PendingIntent.getActivity(c, 21, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    static PendingIntent alarmIntent(Context c) {
-        return PendingIntent.getBroadcast(c, 22, new Intent(c, AiCallReceiver.class).setAction(AiCallReceiver.TICK), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    static PendingIntent alarmIntent(Context c, int slot, JSONObject event) {
+        Intent intent = new Intent(c, AiCallReceiver.class).setAction(AiCallReceiver.TICK).putExtra("slot", slot);
+        if (event != null) {
+            intent.putExtra("kind", event.optString("kind", "intake"))
+                    .putExtra("title", event.optString("title", "Kamp Koçu seni arıyor"))
+                    .putExtra("text", event.optString("text", "Bugün hangi ödevleri verdiler?"));
+        }
+        return PendingIntent.getBroadcast(c, BASE_REQUEST + slot, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     static PendingIntent skipIntent(Context c) {
         return PendingIntent.getBroadcast(c, 23, new Intent(c, AiCallReceiver.class).setAction(AiCallReceiver.SKIP), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    /** Bildirimi gönderir. test=false ise dünkü/yarınki aramayı da planlar. */
-    static String notifyNow(Context c, boolean test) {
-        if (Build.VERSION.SDK_INT >= 33 && c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            return "{\"ok\":false,\"message\":\"Bildirim izni yok.\"}";
-        }
+    static boolean allowed(Context c) {
+        return Build.VERSION.SDK_INT < 33 || c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    static void show(Context c, String kind, String title, String text) {
+        if (!allowed(c)) return;
         channels(c);
-        SharedPreferences p = prefs(c);
-        int pending = p.getInt("aiPending", 0);
-        String first = p.getString("aiFirst", "");
-        String exam = p.getString("aiExam", "");
-        String text;
-        if (pending > 0) text = "Bugünkü ödevleri konuşalım mı? " + pending + " ödev bekliyor" + (first.isEmpty() ? "." : ": " + first + ".");
-        else if (!exam.isEmpty()) text = "Bugünkü planını ve " + exam + " sınavını konuşalım mı?";
-        else text = "Bugünkü ödevlerini ve çalışma planını konuşalım mı?";
+        String safeTitle = title == null || title.isEmpty() ? "Kamp Koçu seni arıyor" : title;
+        String safeText = text == null || text.isEmpty() ? "Bugün hangi ödevleri verdiler? Söyle, kaydedeyim." : text;
+        String safeKind = kind == null || kind.isEmpty() ? "intake" : kind;
         Notification n = new Notification.Builder(c, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Kamp Koçu seni arıyor")
-                .setContentText(text)
-                .setStyle(new Notification.BigTextStyle().bigText(text + " Dokununca uygulama içi sesli arama başlar."))
-                .setContentIntent(openCall(c))
+                .setContentTitle(safeTitle)
+                .setContentText(safeText)
+                .setStyle(new Notification.BigTextStyle().bigText(safeText + " Dokununca uygulama içi sesli arama başlar."))
+                .setContentIntent(openCall(c, safeKind))
                 .setAutoCancel(true)
                 .setCategory(Notification.CATEGORY_REMINDER)
                 .setPriority(Notification.PRIORITY_HIGH)
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(true)
-                .addAction(new Notification.Action.Builder(null, "Beni ara", openCall(c)).build())
+                .addAction(new Notification.Action.Builder(null, "Beni ara", openCall(c, safeKind)).build())
                 .addAction(new Notification.Action.Builder(null, "Şimdi değil", skipIntent(c)).build())
                 .build();
         c.getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, n);
-        if (!test) schedule(c);
+    }
+
+    /** Ayarlardaki "Bildirimi test et" düğmesi. */
+    static String testNotify(Context c, String json) {
+        if (!allowed(c)) return "{\"ok\":false,\"message\":\"Bildirim izni yok.\"}";
+        String kind = "intake", title = "Kamp Koçu seni arıyor", text = "Bugün hangi ödevleri verdiler? Söyle, kaydedeyim.";
+        try {
+            if (json != null && !json.isEmpty()) {
+                JSONObject event = new JSONObject(json);
+                kind = event.optString("kind", kind);
+                title = event.optString("title", title);
+                text = event.optString("text", text);
+            }
+        } catch (Exception ignored) { }
+        show(c, kind, title, text);
         return "{\"ok\":true}";
     }
 }

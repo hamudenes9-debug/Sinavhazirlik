@@ -1,11 +1,15 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.3.0** ile uygulamaya ödev takibi ve **yapay zekâ koçunun öğrenciyi araması** eklendi.
+Sürüm **1.4.0** ile uygulamaya ödev takibi, **günlük çıkış saatine göre arama** ve teslim öncesi hatırlatma eklendi.
 
 ## Ne yapıyor?
 
-- **Ödev listesi:** ders, başlık ve teslim tarihiyle ödev eklenir. Liste yalnızca cihazda saklanır.
-- **Okul çıkışı araması:** hafta içi seçilen saatte (varsayılan **16:30**) “Kamp Koçu seni arıyor” bildirimi gelir. Bildirime dokununca uygulama içinde **sesli arama ekranı** açılır.
+- **Ödev listesi:** ders, başlık ve teslim tarihiyle ödev elle de eklenebilir. Liste yalnızca cihazda saklanır.
+- **Günlük çıkış saatleri:** her gün için ayrı saat girilir (örnek: Pazartesi **16:00**, diğer günler **15:10**). Boş bırakılan gün aranmaz.
+- **Okul çıkışı araması:** o günün çıkış saatinde “Kamp Koçu seni arıyor” bildirimi gelir; dokununca uygulama içi sesli arama açılır ve koç **“bugün hangi ödevleri verdiler?”** diye sorar.
+- **Ödev kaydı:** söylediklerin (“matematik çalışma kağıdı, fen özeti ve türkçe kitap okuma”) dersleriyle birlikte ayrı ödevler olarak kaydedilir. Teslim tarihi varsayılan olarak sonraki okul günüdür; listeden değiştirilebilir.
+- **Teslimden bir gün önce:** o gün 18:00’de “(İsim)! Yarın … ödevin var, unutma” diye arar.
+- **İsimle hitap:** “Koç sana nasıl hitap etsin?” alanına yazdığın isimle konuşur.
 - **Sesli brifing:** koç ödev sayısını, ilk ödevi ve yaklaşan sınavı Türkçe sesli söyler.
 - **Sesli sohbet:** mikrofonla veya yazarak cevap verilir. Koç cevabı sesli okur.
 - **Ödev işaretleme:** “Matematik ödevini yaptım” denince o ödev tamamlandı olarak işaretlenir.
@@ -33,7 +37,7 @@ Sohbette/ekran görüntüsünde paylaşılan bir anahtar artık gizli sayılmaz.
 | İzin | Neden |
 | --- | --- |
 | `POST_NOTIFICATIONS` | Arama bildirimi |
-| `SCHEDULE_EXACT_ALARM` | Saati dakikası dakikasına planlamak (izin yoksa yaklaşık zamanlanır) |
+| `SCHEDULE_EXACT_ALARM` | Günlük çıkış saatini dakikası dakikasına planlamak |
 | `RECORD_AUDIO` | Mikrofonla cevap vermek (izin verilmezse yazıyla devam edilir) |
 | `INTERNET` | Groq yanıtı; yoksa çevrimdışı brifing |
 
@@ -43,6 +47,8 @@ Mikrofon ve konuşma tanıma cihazda yoksa koç yazılı sohbete geçer. Türkç
 
 - Uygulama **pilin optimizasyonundan** çıkarılmazsa bazı üreticiler (Xiaomi, Samsung, Huawei) alarmı geciktirebilir. Ayarlar sayfasındaki “pil” düğmesinden izin ver.
 - “Tam alarm” izni verilmezse arama birkaç dakika gecikebilir; bildirim yine gelir.
+- Her gün en fazla 12 alarm planlanır; uygulamayı açtığında ve tekrar aradığında plan kendini yeniler.
+- Teslim hatırlatması yalnızca 18:00’den önce uygulama açıldığında planlanır.
 - İnternet yoksa koç yalnızca cihazdaki ödev/sınav bilgilerini söyler.
 
 ## Gizlilik
@@ -54,7 +60,7 @@ Mikrofon ve konuşma tanıma cihazda yoksa koç yazılı sohbete geçer. Türkç
 ## Testler
 
 ```bash
-npm test                 # çekirdek + koç mantığı (25 test)
+npm test                 # çekirdek + koç mantığı (30 test)
 npm run test:browser     # masaüstü/mobil, arama ekranı, ödev ekleme
 ```
 

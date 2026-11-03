@@ -1,13 +1,17 @@
-/* Kamp Koçu'nun saf (test edilebilir) mantığı: ödev eşleştirme, arama zamanı,
- * sesli brifing, Groq mesajları ve çevrimdışı yanıtlar. Tarayıcıya bağımlı değildir. */
+/* Kamp Koçu'nun saf (test edilebilir) mantığı: günlük çıkış saatleri, ödev
+ * eşleştirme/ayrıştırma, arama planı, sesli brifing ve çevrimdışı yanıtlar.
+ * Tarayıcıya bağımlı değildir. */
 (function(root){
  'use strict';
  const ZONE_OFFSET_MIN=180; // Türkiye 2016'dan beri sabit UTC+3
  const MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
  const WEEKDAYS=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+ const SHORT_DAYS={1:'Pzt',2:'Sal',3:'Çar',4:'Per',5:'Cum',6:'Cmt',7:'Paz'};
+ const DEFAULT_DAYS={1:'16:00',2:'15:10',3:'15:10',4:'15:10',5:'15:10',6:'',7:''};
  const DONE_WORDS=['yaptim','bitirdim','tamamladim','bitti','hallettim','yapildi'];
  const HELP_WORDS=['takildim','anlamadim','anlamiyorum','nasil','yardim','cozemedim','zor','ipucu','coz'];
  const GREETING_WORDS=['merhaba','selam','gunaydin','iyi aksamlar','iyi gunler','naber','nasilsin'];
+ const FILLERS=['bugun','bize','hocam','ogretmen','ogretmenim','verdi','verildi','odev','odevler','odevimiz','odevim','olarak','iste','bir de','ayrica','sonra','dedi','kadar','icin'];
 
  function pad(n){return String(n).padStart(2,'0');}
  function istParts(ms){
@@ -15,12 +19,40 @@
   return {y:d.getUTCFullYear(),m:d.getUTCMonth()+1,d:d.getUTCDate(),h:d.getUTCHours(),mi:d.getUTCMinutes(),weekday:((d.getUTCDay()+6)%7)+1};
  }
  function toMs(p){return Date.UTC(p.y,p.m-1,p.d,p.h||0,p.mi||0)-ZONE_OFFSET_MIN*60000;}
+ function istDate(ms){const p=istParts(ms);return `${p.y}-${pad(p.m)}-${pad(p.d)}`;}
  function parseTime(v){
   if(typeof v!=='string')return null;
   const m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(v.trim());
   return m?`${m[1]}:${m[2]}`:null;
  }
- /* Hafta içi (Pzt-Cum) verilen saatte bir sonraki arama zamanı. */
+ function istAt(dateStr,time){
+  const d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr||''));
+  const t=parseTime(time);
+  if(!d||!t)return null;
+  const [h,mi]=t.split(':').map(Number);
+  return toMs({y:Number(d[1]),m:Number(d[2]),d:Number(d[3]),h,mi});
+ }
+ function addDaysISO(dateStr,n){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr||''));
+  if(!m)return null;
+  return new Date(Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]))+n*86400000).toISOString().slice(0,10);
+ }
+ function weekdayOf(dateStr){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr||''));
+  if(!m)return null;
+  return ((new Date(Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]))).getUTCDay()+6)%7)+1;
+ }
+ /* Bir günün (hafta sonu Atlanarak) sonraki okul günü. */
+ function nextSchoolDay(dateStr){
+  let day=addDaysISO(dateStr,1);
+  for(let i=0;i<7&&day;i++){
+   const wd=weekdayOf(day);
+   if(wd>=1&&wd<=5)return day;
+   day=addDaysISO(day,1);
+  }
+  return day;
+ }
+ /* Hafta içi verilen saatte bir sonraki arama zamanı (tek saat). */
  function nextCallAt(nowMs,time,days){
   const safe=parseTime(time);if(!safe)return null;
   const [h,mi]=safe.split(':').map(Number);
@@ -28,12 +60,49 @@
   const base=istParts(nowMs);
   for(let i=0;i<8;i++){
    const day=new Date(Date.UTC(base.y,base.m-1,base.d+i));
-   const weekday=((day.getUTCDay()+6)%7)+1;
+   const weekday=((day.getUTCDay()+7-1)%7)+1;
    if(!allowed.includes(weekday))continue;
    const candidate=toMs({y:day.getUTCFullYear(),m:day.getUTCMonth()+1,d:day.getUTCDate(),h,mi});
    if(candidate>Number(nowMs)+30000)return candidate;
   }
   return null;
+ }
+ function sanitizeDays(obj){
+  const out={...DEFAULT_DAYS};
+  if(obj&&typeof obj==='object'){
+   for(const key of ['1','2','3','4','5','6','7']){
+    if(!(key in obj))continue;
+    const value=obj[key]===''? '' : parseTime(obj[key]);
+    out[key]=value===null?DEFAULT_DAYS[key]:value;
+   }
+  }
+  return out;
+ }
+ /* Günlük çıkış saatlerinden sıradaki aramalar: [{at,weekday,time}]. */
+ function upcomingCalls(nowMs,days,count){
+  const safe=sanitizeDays(days), result=[], base=istParts(nowMs);
+  for(let i=0;i<14&&result.length<(count||8);i++){
+   const day=new Date(Date.UTC(base.y,base.m-1,base.d+i));
+   const weekday=((day.getUTCDay()+7-1)%7)+1;
+   const time=safe[String(weekday)];
+   if(!time)continue;
+   const [h,mi]=time.split(':').map(Number);
+   const at=toMs({y:day.getUTCFullYear(),m:day.getUTCMonth()+1,d:day.getUTCDate(),h,mi});
+   if(at>Number(nowMs)+30000)result.push({at,weekday,time});
+  }
+  return result;
+ }
+ function scheduleSummary(days){
+  const safe=sanitizeDays(days), groups=[];
+  for(let wd=1;wd<=7;wd++){
+   const time=safe[String(wd)];
+   if(!time)continue;
+   const last=groups[groups.length-1];
+   if(last&&last.time===time&&last.end===wd-1)last.end=wd;
+   else groups.push({start:wd,end:wd,time});
+  }
+  if(!groups.length)return 'Arama günü seçilmedi';
+  return groups.map(g=>g.start===g.end?`${SHORT_DAYS[g.start]} ${g.time}`:`${SHORT_DAYS[g.start]}–${SHORT_DAYS[g.end]} ${g.time}`).join(' · ');
  }
  function formatClock(ms){const p=istParts(ms);return pad(p.h)+':'+pad(p.mi);}
  function formatDateTR(dateStr,withWeekday){
@@ -107,11 +176,41 @@
  }
  function wantsHelp(text){return hasWord(text,HELP_WORDS);}
  function isGreeting(text){return hasWord(text,GREETING_WORDS);}
+ function noHomework(text){return /\b(yok|yoktu|vermediler|odev yok|hicbir sey|bir sey yok)\b/.test(norm(text));}
+
+ /* Sesli cümleden ödevleri çıkarır: "matematik çalışma kağıdı, fen özeti ve
+  * türkçe kitap okuma" → üç ödev. Teslim tarihi varsayılan: sonraki okul günü. */
+ function parseHomeworkUtterance(text,subjects,today){
+  const raw=String(text||'').trim();
+  if(!raw||noHomework(raw))return [];
+  const chunks=raw
+   .replace(/[.!?]+/g,' ')
+   .split(/\s*(?:,|;|\bve\b|\bile\b|\bsonra\b|\bayrıca\b|\bartı\b|\bdiğer\b|\bde\b|\bda\b)\s*/iu)
+   .map(x=>x.trim())
+   .filter(Boolean);
+  const due=nextSchoolDay(today||istDate(Date.now()));
+  const items=[];
+  for(const chunk of chunks){
+   let title=chunk
+    .replace(/^(?:bugün|bize|hocam|öğretmenim|öğretmen|verdi|verildi|işte|bir de|şey)\s+/iu,'')
+    .replace(/\s+(?:ödevini|ödevi|ödevlerini|ödevler|ödev|verdi|verildi|dedi|kadar)$/iu,'')
+    .trim();
+   if(title.length<3)continue;
+   if(/^(yok|hiç|hiçbir|bir şey|şey|tamam|peki|evet|hayır)$/iu.test(title))continue;
+   if(norm(title).split(' ').every(w=>FILLERS.includes(w)))continue;
+   const subject=matchSubject(title,subjects)||'diger';
+   items.push({subject,title:title.charAt(0).toLocaleUpperCase('tr-TR')+title.slice(1),due});
+   if(items.length>=5)break;
+  }
+  return items;
+ }
+
  function buildBriefing(ctx){
   const c=ctx||{},hour=istParts(c.nowMs||Date.now()).h;
   const greeting=hour>=17?'İyi akşamlar':hour>=12?'Merhaba':'Günaydın';
   const pending=pendingHomework(c.homework);
-  const parts=[`${greeting}! Ben Kamp Koçu.`];
+  const name=c.name?`${c.name}! `:'';
+  const parts=[`${name}${greeting}! Ben Kamp Koçu.`];
   if(pending.length){
    const names=pending.slice(0,3).map(h=>h.title).join(', ');
    parts.push(`Bugün ${pending.length} ödevin bekliyor: ${names}.`);
@@ -126,19 +225,37 @@
    const when=n===0?'Bugün':n===1?'Yarın':`${n} gün sonra`;
    parts.push(`${when} ${c.exam.name} sınavın var.`);
   }
-  parts.push(pending.length?'Hangisinden başlayalım?':'Bugünkü çalışma planını konuşalım mı?');
+  parts.push(pending.length?'Hangisinden başlayalım?':'Bugün hangi ödevleri verdiler? Söyle, kaydedeyim.');
   return parts.join(' ');
- }
- function describeHomework(homework,today){
+}
+
+/* Okul çıkışı aramasının açılışı: ödevleri sorar. */
+ function intakePrompt(ctx){
+  const c=ctx||{},hour=istParts(c.nowMs||Date.now()).h;
+  const greeting=hour>=17?'İyi akşamlar':hour>=12?'Merhaba':'Günaydın';
+  const name=c.name?`${c.name}! `:'';
+  return `${name}${greeting}! Okuldan çıktın, bugün hangi ödevleri verdiler? Dersleriyle birlikte söyle, hemen kaydedeyim.`;
+}
+
+/* Teslimden bir gün önceki hatırlatma: "(İsim)! Ödevin var, unutma". */
+ function dueReminder(ctx){
+  const c=ctx||{},list=pendingHomework(c.homework).filter(h=>h.due===c.tomorrow);
+  const name=c.name?`${c.name}! `:'';
+  if(!list.length)return null;
+  const titles=list.map(h=>h.title).join(', ');
+  const verb=list.length>1?'ödevlerin':'ödevin';
+  return `${name}Yarın ${titles} ${verb} var, unutma! ${c.tomorrow===c.today?'Bugün teslim.':'Şimdi kısa bir başlangıç yapalım mı?'}`;
+}
+function describeHomework(homework,today){
   const list=Array.isArray(homework)?homework:[];
   if(!list.length)return 'Kayıtlı ödev yok.';
   return list.map(h=>`- ${h.title} (${h.done?'tamamlandı':'bekliyor'}, ${dueLabel(h.due,today)})`).join('\n');
- }
- function describeExams(exams){
+}
+function describeExams(exams){
   if(!Array.isArray(exams)||!exams.length)return 'Yaklaşan sınav yok.';
   return exams.slice(0,4).map(e=>`- ${e.name}: ${formatDateTR(e.date,true)}, ${e.days===0?'bugün':e.days===1?'yarın':e.days+' gün sonra'}`).join('\n');
- }
- function composeMessages(input){
+}
+function composeMessages(input){
   const c=input||{};
   const system=[
    'Sen "Kamp Koçu"sun: 6. sınıf öğrencisine ödev ve sınav hazırlığında yardım eden, Türkçe konuşan sıcak bir koçsun.',
@@ -148,7 +265,7 @@
    '- Ödev yardımı istenirse konuyu tek cümleyle hatırlat, sonra cevabı vermeden küçük bir ipucu ver.',
    '- Öğrenci bir ödevi bitirdiğini söylerse kısaca tebrik et ve sıradaki ödevi hatırlat.',
    '- Ders dışı veya uygunsuz istekte kibarca konuyu ödeve getir. Sağlık/acil durumda güvendiği bir yetişkine yönlendir.',
-   `Bugün: ${formatDateTR(c.today,true)}.`,
+   `Bugün: ${formatDateTR(c.today,true)}.${c.name?` Öğrencinin adı: ${c.name}.`:''}`,
    `Ödevler:\n${describeHomework(c.homework,c.today)}`,
    `Sınavlar:\n${describeExams(c.exams)}`,
    c.tasks&&c.tasks.length?`Bugünkü plan: ${c.tasks.slice(0,4).map(t=>t.title+(t.done?' (bitti)':'')).join(', ')}.`:''
@@ -159,36 +276,36 @@
   }
   messages.push({role:'user',content:String(c.userText||'').slice(0,1200)});
   return messages;
- }
- function subjectTip(subjects,id){
+}
+function subjectTip(subjects,id){
   const s=id&&subjects&&subjects[id];
   if(!s)return '';
   const topic=(s.topics&&s.topics[0])||'konu tekrarı';
   return `${s.name} için önce "${topic}" konusundaki örneği tekrar oku, sonra ilk soruyu kendin çözmeyi dene.`;
- }
- function offlineAnswer(text,ctx){
+}
+function offlineAnswer(text,ctx){
   const c=ctx||{},subjects=c.subjects||{},today=c.today||'';
-  const pending=pendingHomework(c.homework);
   const subjectId=matchSubject(text,subjects);
   if(wantsHelp(text)&&subjectId){
    return `${subjectTip(subjects,subjectId)} Takıldığın soruyu bana yazarsan birlikte adım adım bakarız.`;
   }
   if(hasWord(text,DONE_WORDS)){
    const left=pendingHomework(c.homework);
-   if(!left.length)return 'Bugünkü bütün ödevler tamam. Çok iyi iş çıkardın! Yarınki sınav için kısa bir tekrar yapalım mı?';
+   if(!left.length)return 'Bugünkü bütün ödevler tamam. Çok iyi iş çıkardın! Yarınki dersler için kısa bir tekrar yapalım mı?';
    return `Harika! Sırada ${left[0].title} var. Ona da birlikte bakalım mı?`;
   }
   if(/sinav|sinavlar|hangi sinav/.test(norm(text))&&c.exam){
    return `Sıradaki sınavın ${c.exam.name}. ${c.exam.days===0?'Bugün':c.exam.days===1?'Yarın':c.exam.days+' gün sonra'}. Bugün 15 dakika tekrar yeterli.`;
   }
-  if(pending.length){
+  if(pendingHomework(c.homework).length){
+   const pending=pendingHomework(c.homework);
    const names=pending.slice(0,3).map(h=>h.title).join(', ');
    return `Bekleyen ${pending.length} ödevin var: ${names}. ${subjectTip(subjects,pending[0].subject)} Hangisiyle başlayalım?`;
   }
   if(isGreeting(text))return 'Merhaba! Bugünkü ödevlerin tamam görünüyor. Kısa bir sınav tekrarı yapalım mı?';
   return 'Şu an internete ulaşamadım ama ödevlerini biliyorum. Yeni bir ödev ekleyebilir veya sınav tekrarı isteyebilirsin.';
- }
- function validateHomeworkItem(item){
+}
+function validateHomeworkItem(item){
   if(!item||typeof item!=='object')return false;
   if(typeof item.id!=='string'||!/^hw-[a-zA-Z0-9-]{1,60}$/.test(item.id))return false;
   if(typeof item.title!=='string'||item.title.trim().length<1||item.title.length>120)return false;
@@ -197,18 +314,18 @@
   if(typeof item.done!=='boolean')return false;
   if(item.createdAt!==undefined&&(!Number.isFinite(item.createdAt)||item.createdAt<0))return false;
   return true;
- }
- function sanitizeHomework(list){
+}
+function sanitizeHomework(list){
   if(!Array.isArray(list))return [];
   return list.filter(validateHomeworkItem).slice(0,200);
- }
- function sanitizeSettings(obj){
+}
+function sanitizeSettings(obj){
   const o=obj&&typeof obj==='object'?obj:{};
-  const time=parseTime(o.time)||'16:30';
   const key=typeof o.key==='string'&&o.key.length<=300?o.key.trim():'';
   const proxy=typeof o.proxy==='string'&&/^https:\/\/[^\s]+$/.test(o.proxy)?o.proxy:'';
-  return {enabled:!!o.enabled,time,key,proxy};
- }
- const api={nextCallAt,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework};
- if(typeof module!=='undefined')module.exports=api;else root.KampAIcore=api;
+  const name=typeof o.name==='string'?o.name.trim().replace(/\s+/g,' ').slice(0,24):'';
+  return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy};
+}
+const api={nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
+if(typeof module!=='undefined')module.exports=api;else root.KampAIcore=api;
 })(typeof window!=='undefined'?window:globalThis);

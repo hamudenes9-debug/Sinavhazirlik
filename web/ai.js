@@ -1,4 +1,4 @@
-/* Kamp Koçu: ödev listesi, okul çıkışı araması, sesli sohbet ve Groq bağlantısı. */
+/* Kamp Koçu: ödev listesi, günlük çıkış saati aramaları, sesli sohbet ve Groq bağlantısı. */
 (() => {
 'use strict';
 const AIC = window.KampAIcore;
@@ -12,6 +12,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const A = () => window.KampApp;
 const bridge = () => window.AndroidBridge;
+const DAY_LABELS = {1: 'Pazartesi', 2: 'Salı', 3: 'Çarşamba', 4: 'Perşembe', 5: 'Cuma', 6: 'Cumartesi', 7: 'Pazar'};
 
 let settings = loadSettings();
 let homework = loadHomework();
@@ -25,26 +26,20 @@ function loadSettings() {
     const raw = JSON.parse(localStorage.getItem(AI_KEY) || 'null');
     return AIC.sanitizeSettings({ ...raw, proxy: (raw && raw.proxy) || CONFIG.proxy || '' });
   } catch {
-    return AIC.sanitizeSettings({ time: '16:30', proxy: CONFIG.proxy || '' });
+    return AIC.sanitizeSettings({ proxy: CONFIG.proxy || '' });
   }
 }
-function saveSettings() {
-  try { localStorage.setItem(AI_KEY, JSON.stringify(settings)); } catch {}
-}
-function loadHomework() {
-  try { return AIC.sanitizeHomework(JSON.parse(localStorage.getItem(HW_KEY) || '[]')); } catch { return []; }
-}
-function saveHomework() {
-  try { localStorage.setItem(HW_KEY, JSON.stringify(homework)); } catch {}
-}
+function saveSettings() { try { localStorage.setItem(AI_KEY, JSON.stringify(settings)); } catch {} }
+function loadHomework() { try { return AIC.sanitizeHomework(JSON.parse(localStorage.getItem(HW_KEY) || '[]')); } catch { return []; } }
+function saveHomework() { try { localStorage.setItem(HW_KEY, JSON.stringify(homework)); } catch {} }
 function subjects() { return (window.KAMP_DATA && window.KAMP_DATA.subjects) || {}; }
 function currentKey() { return (settings.key || CONFIG.key || '').trim(); }
 function hasKey() { return !!currentKey(); }
 function today() {
   try { if (A()) return A().C.today(); } catch {}
-  return new Date(Date.now() + 180 * 60000).toISOString().slice(0, 10);
+  return AIC.istDate(Date.now());
 }
-
+function name() { return settings.name || ''; }
 function pendingList() { return AIC.pendingHomework(homework); }
 function nextExam() {
   try {
@@ -56,8 +51,22 @@ function nextExam() {
     return { name: first.name, days: app.C.daysBetween(app.C.today(), first.date), date: first.date };
   } catch { return null; }
 }
+function homeworkSummary() {
+  const pending = pendingList();
+  if (!pending.length) return 'Bekleyen ödev yok';
+  const dueTomorrow = pending.filter(h => h.due === AIC.addDaysISO(today(), 1)).length;
+  return dueTomorrow ? `${pending.length} ödev · ${dueTomorrow} tanesi yarın` : `${pending.length} ödev bekliyor`;
+}
 
 /* ---------- Sayfa ---------- */
+function dayRows() {
+  return [1, 2, 3, 4, 5].map(day => `<label class="day-row">
+      <span>${DAY_LABELS[day]}</span>
+      <input type="time" data-day-time="${day}" value="${esc(settings.days[String(day)] || '')}" aria-label="${DAY_LABELS[day]} çıkış saati" placeholder="--:--">
+      <button type="button" class="day-clear" data-ai="clear-day" data-day="${day}" aria-label="${DAY_LABELS[day]} aramasını kaldır">${settings.days[String(day)] ? '×' : '—'}</button>
+    </label>`).join('');
+}
+
 function renderPage() {
   const app = A();
   if (!app) return '<div class="empty">Koç yükleniyor…</div>';
@@ -66,19 +75,21 @@ function renderPage() {
   const keyReady = hasKey();
   const subjectOptions = Object.entries(subjects())
     .map(([id, s]) => `<option value="${esc(id)}">${esc(s.name)}</option>`).join('');
-  const intro = app.intro('ÖDEV & SESLİ KOÇ', 'Ödevlerini birlikte konuşalım.',
-    'Okul çıkışı Kamp Koçu seni arar; ödevlerini sorar, takıldığın yerde ipucu verir.',
+  const schedule = AIC.scheduleSummary(settings.days);
+  const intro = app.intro('ÖDEV & SESLİ KOÇ',
+    settings.name ? `${settings.name}, ödevlerini birlikte konuşalım.` : 'Ödevlerini birlikte konuşalım.',
+    'Okuldan çıktığın saatte Kamp Koçu seni arar; ödevleri sorar, kaydeder ve teslimden önce hatırlatır.',
     `<button class="btn btn-primary" data-ai="call-now">${app.icon('phone')} Beni şimdi ara</button>`);
   return `${intro}
   <div class="ai-layout">
     <div class="ai-main">
       <section class="call-card">
-        <div class="call-card-top"><span class="tag-dark">YAPAY ZEKÂ KOÇ</span><span class="call-pill ${settings.enabled ? 'on' : ''}"><i></i>${settings.enabled ? `Hafta içi ${settings.time}` : 'Arama planı kapalı'}</span></div>
+        <div class="call-card-top"><span class="tag-dark">YAPAY ZEKÂ KOÇ</span><span class="call-pill ${settings.enabled ? 'on' : ''}"><i></i>${settings.enabled ? schedule : 'Arama planı kapalı'}</span></div>
         <div class="call-card-body">
           <div class="coach-avatar">${app.icon('spark')}<span class="coach-ring"></span></div>
           <div class="call-card-copy">
             <h2>Kamp Koçu</h2>
-            <p>${settings.enabled ? `Okul çıkışı ${settings.time}'te seni arayacak.` : 'İstersen her okul günü seni arasın.'}</p>
+            <p>${settings.enabled ? `Okul çıkışında seni arayacak: ${schedule}.` : 'Çıkış saatini seç; her okul günü seni arasın.'}</p>
             <div class="call-card-meta">
               <span>${app.icon('check-square')} ${stats.pending ? `${stats.pending} ödev bekliyor` : 'Bekleyen ödev yok'}</span>
               <span>${app.icon('calendar')} ${exam ? `${exam.name} ${exam.days === 0 ? 'bugün' : exam.days === 1 ? 'yarın' : exam.days + ' gün sonra'}` : 'Sınav yok'}</span>
@@ -87,31 +98,32 @@ function renderPage() {
         </div>
         <div class="call-card-actions">
           <button class="btn btn-white" data-ai="call-now">${app.icon('play')} Sesli arama başlat</button>
+          <button class="btn btn-white" data-ai="call-intake">${app.icon('check-square')} Bugünkü ödevleri söyle</button>
           <span class="call-note">${app.icon('shield')} Gerçek telefon araması değil; uygulama içi sesli arama.</span>
         </div>
       </section>
 
       <section class="card card-padding hw-card">
         <div class="section-heading">
-          <div><h2>Ödevlerim</h2><p>Bu liste yalnızca bu cihazda saklanır, buluta gönderilmez.</p></div>
+          <div><h2>Ödevlerim</h2><p>Koç aradığında söylediklerin buraya kaydedilir. Liste bu cihazda kalır.</p></div>
           <span class="progress-pill">${stats.done}/${stats.total} bitti</span>
         </div>
         <form id="hw-form" class="hw-form">
           <input name="title" placeholder="Örn. Matematik çalışma kağıdı, 1-10" maxlength="120" required>
           <select name="subject" aria-label="Ders">${subjectOptions}</select>
-          <input type="date" name="due" value="${today()}" required aria-label="Teslim tarihi">
+          <input type="date" name="due" value="${AIC.nextSchoolDay(today())}" required aria-label="Teslim tarihi">
           <button class="btn btn-primary" type="submit">${app.icon('plus')} Ödev ekle</button>
         </form>
         <div class="hw-list">
           ${homework.length ? homework.map(h => {
-            const sub = subjects()[h.subject] || { name: h.subject };
+            const sub = subjects()[h.subject] || { name: h.subject === 'diger' ? 'Diğer' : h.subject };
             const diff = AIC.dayDiff(today(), h.due);
             return `<div class="hw-row ${h.done ? 'done' : ''}">
               <button class="task-check" data-ai="toggle-hw" data-id="${esc(h.id)}" aria-pressed="${h.done}" aria-label="${esc(h.title)}: ${h.done ? 'tamamlandı' : 'tamamla'}">${h.done ? app.icon('check') : ''}</button>
               <div class="hw-info"><strong>${esc(h.title)}</strong><span>${esc(sub.name)} · <em class="${!h.done && diff !== null && diff < 0 ? 'late' : ''}">${AIC.dueLabel(h.due, today())}</em></span></div>
               <button class="icon-btn hw-del" data-ai="delete-hw" data-id="${esc(h.id)}" aria-label="Ödevi sil">${app.icon('trash')}</button>
             </div>`;
-          }).join('') : `<div class="hw-empty">${app.icon('check-square')}<div><strong>Henüz ödev eklemedin.</strong><p>Yarın için bir ödev ekle; koç seni aradığında onu soracak.</p></div></div>`}
+          }).join('') : `<div class="hw-empty">${app.icon('check-square')}<div><strong>Henüz ödev eklemedin.</strong><p>Akşam koç seni aradığında söyle; o kaydeder. İstersen buradan da ekleyebilirsin.</p></div></div>`}
         </div>
       </section>
     </div>
@@ -119,18 +131,19 @@ function renderPage() {
     <aside class="ai-aside">
       <section class="card card-padding settings-card">
         <h2>Okul çıkışı araması</h2>
+        <label class="form-field"><span>Koç sana nasıl hitap etsin?</span><input id="ai-name" maxlength="24" autocomplete="off" placeholder="Örn. Ahmet" value="${esc(settings.name)}"></label>
         <label class="setting-row">
-          <div><strong>Beni okuldan sonra ara</strong><p>Hafta içi seçtiğin saatte bildirim gelir. Bildirime dokununca koç seni arar.</p></div>
+          <div><strong>Her okul günü beni ara</strong><p>Çıkış saatinde “bugün hangi ödevleri verdiler?” diye sorar ve kaydeder.</p></div>
           <input type="checkbox" id="ai-call-toggle" ${settings.enabled ? 'checked' : ''}>
         </label>
-        <label class="form-field"><span>Arama saati</span><input type="time" id="ai-call-time" value="${settings.time}" min="12:00" max="22:00"></label>
-        <p class="ai-hint">Hafta içi (Pzt–Cum) çalışır. Android’de bildirim izni ve tam alarm izni gerekir.</p>
+        <div class="day-list" aria-label="Günlük çıkış saatleri">${dayRows()}</div>
+        <p class="ai-hint">Örnek: Pazartesi <strong>16:00</strong>, diğer günler <strong>15:10</strong>. Boş bırakılan gün aranmaz. Teslimden bir gün önce ayrıca hatırlatma araması yapılır.</p>
         <button class="btn btn-white ai-test" data-ai="test-call">${app.icon('bell')} Bildirimi test et</button>
       </section>
 
       <section class="card card-padding settings-card">
         <h2>Yapay zekâ anahtarı</h2>
-        <p class="ai-copy">Anahtar yalnızca bu cihazda saklanır. Sadece Groq’a soru gönderirken kullanılır; buluta eşitlenmez.</p>
+        <p class="ai-copy">Anahtar yalnızca bu cihazda saklanır. Sadece Groq’a soru gönderirken kullanılır; buluta eşitlenmez ve depoya yazılmaz.</p>
         ${CONFIG.key ? `<p class="ai-builtin">${app.icon('check')} Uygulamaya gömülü anahtar kullanılıyor. İstersen kendi anahtarını yazabilirsin.</p>` : ''}
         <label class="form-field"><span>Groq API anahtarı</span><input id="ai-key" type="password" autocomplete="off" spellcheck="false" placeholder="${CONFIG.key ? 'Kendi anahtarın (isteğe bağlı)' : 'gsk_...'}" value="${esc(settings.key)}"></label>
         <div class="ai-key-actions">
@@ -143,11 +156,11 @@ function renderPage() {
       <section class="card card-padding">
         <h2>Nasıl konuşuruz?</h2>
         <ul class="ai-commands">
+          <li><span>“Matematik çalışma kağıdı, fen özeti”</span><small>Çıkış aramasında söylersen ödevler kaydedilir.</small></li>
           <li><span>“Matematik ödevini yaptım”</span><small>Ödevi tamamlandı olarak işaretler.</small></li>
           <li><span>“Fen ödevinde takıldım”</span><small>Konuyu hatırlatıp ipucu verir.</small></li>
-          <li><span>“Yarın hangi sınav var?”</span><small>Takvimden yanıtlar.</small></li>
         </ul>
-        <p class="ai-hint">Mikrofon yoksa yazarak da konuşabilirsin. İnternet yokken koç temel bilgileri söyler.</p>
+        <p class="ai-hint">Mikrofon yoksa yazarak da konuşabilirsin. Teslimden önceki gün koç “ödevin var, unutma” der.</p>
       </section>
     </aside>
   </div>`;
@@ -160,7 +173,7 @@ function homeCard() {
   if (!app) return '';
   return `<section class="card ai-home-card">
     <div class="ai-home-icon">${app.icon('phone')}</div>
-    <div class="ai-home-copy"><h3>${pending.length ? `${pending.length} ödev seni bekliyor` : 'Kamp Koçu hazır'}</h3><p>${settings.enabled ? `Okul çıkışı ${settings.time}'te seni arayacak.` : 'Okul çıkışı seni aramasını ister misin?'}</p></div>
+    <div class="ai-home-copy"><h3>${settings.name ? `${settings.name}, ` : ''}${pending.length ? `${pending.length} ödev seni bekliyor` : 'Kamp Koçu hazır'}</h3><p>${settings.enabled ? `Çıkışta arayacak: ${AIC.scheduleSummary(settings.days)}` : 'Okul çıkışı seni aramasını ister misin?'}</p></div>
     <div class="ai-home-actions"><button class="btn btn-white" data-ai="call-now">Ara</button><a href="#aiko" class="text-link">Ödevler ${app.icon('arrow')}</a></div>
   </section>`;
 }
@@ -170,12 +183,12 @@ function newId() {
   const rand = globalThis.crypto?.randomUUID?.() || (Date.now() + '-' + Math.random().toString(36).slice(2, 10));
   return 'hw-' + rand.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
 }
-function addHomework(title, subject, due) {
+function addHomework({ title, subject, due }) {
   const item = { id: newId(), title: String(title).trim().slice(0, 120), subject, due, done: false, createdAt: Date.now() };
-  if (!AIC.validateHomeworkItem(item)) return false;
+  if (!AIC.validateHomeworkItem(item)) return null;
   homework = AIC.sanitizeHomework([...homework, item]);
   saveHomework(); applyNativeSchedule();
-  return true;
+  return item;
 }
 function toggleHomework(id) {
   homework = homework.map(h => h.id === id ? { ...h, done: !h.done } : h);
@@ -191,20 +204,52 @@ function markDone(ids) {
   saveHomework(); applyNativeSchedule();
 }
 
-/* ---------- Android zamanlaması ---------- */
+/* ---------- Arama planı ---------- */
+function buildSchedule(now = Date.now()) {
+  const events = [];
+  const nameText = name();
+  for (const slot of AIC.upcomingCalls(now, settings.days, 8)) {
+    events.push({
+      at: slot.at,
+      kind: 'intake',
+      title: 'Kamp Koçu seni arıyor',
+      text: `${nameText ? nameText + ', ' : ''}bugün hangi ödevleri verdiler? Söyle, kaydedeyim.`
+    });
+  }
+  const date = AIC.istDate(now);
+  const tomorrow = AIC.addDaysISO(date, 1);
+  const dueTomorrow = pendingList().filter(h => h.due === tomorrow);
+  if (dueTomorrow.length) {
+    const at = AIC.istAt(date, '18:00');
+    if (at && at > now + 60000) {
+      const titles = dueTomorrow.map(h => h.title).join(', ');
+      events.push({
+        at,
+        kind: 'reminder',
+        title: `${nameText ? nameText + '! ' : ''}Ödevin var, unutma`,
+        text: `Yarın ${titles} teslim. Hadi birlikte bakalım.`
+      });
+    }
+  }
+  const exam = nextExam();
+  if (exam && exam.days === 1) {
+    const at = AIC.istAt(date, '18:30');
+    if (at && at > now + 60000) {
+      events.push({ at, kind: 'reminder', title: `${nameText ? nameText + '! ' : ''}Yarın sınavın var`, text: `Yarın ${exam.name} sınavın var, unutma. Kısa bir tekrar yapalım mı?` });
+    }
+  }
+  return events.sort((a, b) => a.at - b.at).slice(0, 12);
+}
+
 function applyNativeSchedule() {
+  const list = settings.enabled ? buildSchedule() : [];
   const b = bridge();
-  if (!b || typeof b.configureAiCall !== 'function') return;
-  const pending = pendingList();
-  try {
-    b.configureAiCall(JSON.stringify({
-      enabled: settings.enabled,
-      time: settings.time,
-      pending: pending.length,
-      first: pending[0]?.title || '',
-      exam: nextExam()?.name || ''
-    }));
-  } catch (e) { console.warn('AI call schedule', e); }
+  if (b && typeof b.configureAiCall === 'function') {
+    try {
+      b.configureAiCall(JSON.stringify({ enabled: settings.enabled, name: name(), events: list, pending: pendingList().length }));
+    } catch (e) { console.warn('AI call schedule', e); }
+  }
+  return list;
 }
 
 /* ---------- Arama ekranı ---------- */
@@ -280,12 +325,21 @@ function updateTimer() {
   if (el) el.textContent = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
 }
 
-function startCall(source = 'manual') {
+function opening(mode) {
+  if (mode === 'intake') return AIC.intakePrompt({ nowMs: Date.now(), name: name() });
+  if (mode === 'reminder') {
+    const text = AIC.dueReminder({ homework, tomorrow: AIC.addDaysISO(today(), 1), today: today(), name: name() });
+    if (text) return text;
+    const exam = nextExam();
+    if (exam && exam.days === 1) return `${name() ? name() + '! ' : ''}Yarın ${exam.name} sınavın var, unutma. Kısa bir tekrar yapalım mı?`;
+  }
+  return AIC.buildBriefing({ nowMs: Date.now(), today: today(), homework, exam: nextExam(), name: name() });
+}
+
+function startCall(mode = 'manual') {
   if (call?.active) return;
-  const app = A();
-  if (!app) return;
   if (!buildOverlay()) return;
-  call = { active: true, messages: [], muted: false, speaker: true, listening: false, speaking: false, startedAt: Date.now(), speakDone: null, source };
+  call = { active: true, mode, messages: [], muted: false, speaker: true, listening: false, speaking: false, startedAt: Date.now(), speakDone: null, intakeDone: mode !== 'intake' };
   overlay.hidden = false;
   document.body.classList.add('call-open');
   $('#call-log').innerHTML = '';
@@ -297,10 +351,7 @@ function startCall(source = 'manual') {
   callTimer = setInterval(updateTimer, 1000);
   updateTimer();
   syncFab();
-  setTimeout(() => {
-    if (!call?.active) return;
-    speak(briefing());
-  }, 650);
+  setTimeout(() => { if (call?.active) speak(opening(mode)); }, 650);
 }
 
 function endCall() {
@@ -314,11 +365,7 @@ function endCall() {
   document.body.classList.remove('call-open');
   syncFab();
   call = null;
-}
-
-function briefing() {
-  const exam = nextExam();
-  return AIC.buildBriefing({ nowMs: Date.now(), today: today(), homework, exam });
+  A()?.render?.();
 }
 
 function speak(text) {
@@ -409,10 +456,36 @@ async function handleUser(text) {
   addBubble('user', text);
   setCaption(text);
   call.messages.push({ role: 'user', content: text });
+
+  /* Okul çıkışı araması: söylenen ödevleri kaydet. */
+  if (call.mode === 'intake' && !call.intakeDone) {
+    const items = AIC.parseHomeworkUtterance(text, subjects(), today());
+    if (items.length) {
+      const saved = items.map(addHomework).filter(Boolean);
+      call.intakeDone = true;
+      if (saved.length) {
+        const label = saved.map(h => `${(subjects()[h.subject] || {}).name || 'Diğer'} – ${h.title}`).join(', ');
+        const note = saved.length === 1 ? `${label} ödevi` : `${label} ödevleri`;
+        addBubble('note', `${note} kaydedildi. Teslim: ${AIC.formatDateTR(saved[0].due, true)}.`);
+        A()?.render?.();
+        speak(`Kaydettim: ${saved.map(h => h.title).join(', ')}. Teslimden bir gün önce seni yine ararım. Şimdi hangisinden başlayalım?`);
+        return;
+      }
+    }
+    if (AIC.noHomework(text)) {
+      call.intakeDone = true;
+      speak('Ödev yoksa harika. O zaman bugünkü sınav tekrarına kısa bir bakış atalım mı?');
+      return;
+    }
+    setStatus('Düşünüyor…');
+    speak('Tam anlayamadım. Örnek: matematik çalışma kağıdı, fen özeti. Dersleriyle birlikte söyler misin?');
+    return;
+  }
+
   const doneIds = AIC.matchDone(text, homework, subjects());
   if (doneIds.length) {
-    markDone(doneIds);
     const names = homework.filter(h => doneIds.includes(h.id)).map(h => h.title).join(', ');
+    markDone(doneIds);
     addBubble('note', `${names} tamamlandı olarak işaretlendi.`);
   }
   setStatus('Düşünüyor…');
@@ -432,13 +505,13 @@ async function handleUser(text) {
 }
 
 function offlineContext() {
-  return { today: today(), homework, subjects: subjects(), exam: nextExam() };
+  return { today: today(), homework, subjects: subjects(), exam: nextExam(), name: name() };
 }
 
 async function askGroq(userText) {
   const key = currentKey();
   const proxy = settings.proxy || CONFIG.proxy || '';
-  const base = { userText, history: call.messages.slice(0, -1), today: today(), homework, exams: [], tasks: [] };
+  const base = { userText, history: call.messages.slice(0, -1), today: today(), homework, exams: [], tasks: [], name: name() };
   try {
     const app = A();
     base.exams = app.activeExams().slice(0, 4).map(e => ({ name: e.name, date: e.date, days: app.C.daysBetween(app.C.today(), e.date) }));
@@ -492,7 +565,7 @@ function syncSpeakerButton() {
   btn.classList.toggle('off', call ? !call.speaker : false);
   btn.setAttribute('aria-label', call?.speaker ? 'Sesi kapat' : 'Sesi aç');
   if (call && !call.speaker) { stopVoice(); if (call.speakDone) call.speakDone(); }
-  else if (call?.speaker && call.speaking) { bSpeakAgain(); }
+  else if (call?.speaker && call.speaking) bSpeakAgain();
 }
 function bSpeakAgain() {
   const last = [...(call?.messages || [])].reverse().find(m => m.role === 'assistant');
@@ -508,9 +581,17 @@ function onAiClick(btn) {
   const id = btn.dataset.id;
   switch (action) {
     case 'call-now': startCall('manual'); break;
+    case 'call-intake': startCall('intake'); break;
     case 'hangup': endCall(); break;
     case 'toggle-mic': if (call) { call.muted = !call.muted; syncMicButton(); if (!call.muted) listen(); } break;
     case 'toggle-speaker': if (call) { call.speaker = !call.speaker; syncSpeakerButton(); } break;
+    case 'clear-day': {
+      const day = String(btn.dataset.day);
+      settings.days[day] = '';
+      saveSettings(); applyNativeSchedule(); A().render();
+      A().toast(`${DAY_LABELS[day]} araması kaldırıldı.`);
+      break;
+    }
     case 'save-key': {
       const value = ($('#ai-key')?.value || '').trim();
       if (value && !/^gsk_[A-Za-z0-9]{20,}$/.test(value) && !/^[A-Za-z0-9_-]{24,}$/.test(value)) { A().toast('Anahtar biçimi geçerli görünmüyor. Groq anahtarı gsk_ ile başlar.'); return; }
@@ -522,11 +603,14 @@ function onAiClick(btn) {
     case 'delete-hw': deleteHomework(id); A().render(); A().toast('Ödev listeden kaldırıldı.'); break;
     case 'test-call': {
       const b = bridge();
+      const first = buildSchedule()[0];
       if (b && typeof b.testAiCall === 'function') {
-        try { const r = JSON.parse(b.testAiCall() || '{}'); A().toast(r.ok ? 'Test bildirimi gönderildi. Bildirim iznini kontrol et.' : 'Bildirim izni yok. Ayarlar’dan izin ver.'); }
-        catch { A().toast('Test bildirimi gönderilemedi.'); }
+        try {
+          const r = JSON.parse(b.testAiCall(first ? JSON.stringify(first) : '') || '{}');
+          A().toast(r.ok ? `Test bildirimi gönderildi: ${first ? first.text : 'Kamp Koçu seni arıyor'}` : 'Bildirim izni yok. Ayarlar’dan izin ver.');
+        } catch { A().toast('Test bildirimi gönderilemedi.'); }
       } else {
-        A().toast('Tarayıcıda arama bildirimi yok. “Beni şimdi ara” ile dene.');
+        A().toast(first ? `Planlanan arama: ${AIC.formatClock(first.at)} — ${first.text}` : 'Önce bir gün ve saat seç.');
       }
       break;
     }
@@ -544,27 +628,37 @@ function install() {
     const data = new FormData(e.target);
     const title = String(data.get('title') || '').trim();
     const subject = String(data.get('subject') || '');
-    const due = String(data.get('due') || today());
+    const due = String(data.get('due') || AIC.nextSchoolDay(today()));
     if (!title) { A().toast('Ödev başlığını yaz.'); return; }
     if (!/^20\d{2}-\d{2}-\d{2}$/.test(due)) { A().toast('Geçerli bir teslim tarihi seç.'); return; }
-    addHomework(title, subject, due);
+    addHomework({ title, subject, due });
     A().render();
-    A().toast('Ödev eklendi. Koç seni aradığında bunu soracak.');
+    A().toast('Ödev eklendi. Teslimden bir gün önce koç hatırlatacak.');
   });
   document.addEventListener('change', e => {
     if (e.target.id === 'ai-call-toggle') {
       settings.enabled = e.target.checked; saveSettings(); applyNativeSchedule(); A().render();
-      A().toast(settings.enabled ? `Arama planı açıldı: hafta içi ${settings.time}.` : 'Okul çıkışı araması kapatıldı.');
+      A().toast(settings.enabled ? `Arama planı açıldı: ${AIC.scheduleSummary(settings.days)}.` : 'Okul çıkışı araması kapatıldı.');
     }
-    if (e.target.id === 'ai-call-time') {
+    const day = e.target.dataset?.dayTime;
+    if (day) {
       const value = AIC.parseTime(e.target.value);
-      if (!value) { A().toast('Geçerli bir saat seç.'); return; }
-      settings.time = value; saveSettings(); applyNativeSchedule(); A().render();
-      A().toast(`Arama saati ${value} olarak kaydedildi.`);
+      if (value === null && e.target.value) { A().toast('Geçerli bir saat seç.'); return; }
+      settings.days[day] = value || '';
+      saveSettings(); applyNativeSchedule(); A().render();
+      A().toast(value ? `${DAY_LABELS[day]} araması ${value} olarak kaydedildi.` : `${DAY_LABELS[day]} araması kaldırıldı.`);
     }
   });
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'ai-name') return;
+    clearTimeout(window.__aiNameTimer);
+    window.__aiNameTimer = setTimeout(() => {
+      settings.name = String(e.target.value || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+      saveSettings(); applyNativeSchedule();
+    }, 600);
+  });
   window.addEventListener('hashchange', syncFab);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkAuto(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { applyNativeSchedule(); checkAuto(); } });
   autoTimer = setInterval(checkAuto, 30000);
 }
 
@@ -575,20 +669,23 @@ function syncFab() {
   fab.hidden = !!call?.active || page === 'aiko';
 }
 
+/* Tarayıcıda (APK dışında) alarm yok: açıkken zamanı yakalar. */
 function checkAuto() {
   if (!settings.enabled || call?.active) return;
   if (!A()) return;
   const now = Date.now();
-  const due = AIC.nextCallAt(now - 180000, settings.time);
-  if (!due || due > now || now - due >= 180000) return;
-  const stamp = new Date(now).toISOString().slice(0, 10) + '|' + settings.time;
+  const events = buildSchedule(now - 180000);
+  const due = events.find(ev => ev.at <= now && now - ev.at < 180000);
+  if (!due) return;
+  const stamp = AIC.istDate(now) + '|' + due.kind + '|' + AIC.formatClock(due.at);
   try { if (localStorage.getItem(LAST_KEY) === stamp) return; localStorage.setItem(LAST_KEY, stamp); } catch {}
-  startCall('auto');
+  startCall(due.kind);
 }
 
-function openFromNotification() {
+function openFromNotification(kind) {
+  const mode = kind === 'intake' || kind === 'reminder' ? kind : 'manual';
   if (location.hash !== '#aiko') location.hash = '#aiko';
-  setTimeout(() => { if (!call?.active) startCall('notification'); }, 700);
+  setTimeout(() => { if (!call?.active) startCall(mode); }, 700);
 }
 
 /* ---------- Başlat ---------- */
@@ -616,8 +713,13 @@ window.KampAI = {
   },
   _syncNative: applyNativeSchedule,
   _homework: () => homework,
-  _settings: () => settings
+  _settings: () => settings,
+  _plan: () => buildSchedule(),
+  _intake: text => {
+    const items = AIC.parseHomeworkUtterance(text, subjects(), today());
+    return items.map(addHomework).filter(Boolean);
+  }
 };
 
-setTimeout(() => { applyNativeSchedule(); checkAuto(); }, 1200);
+setTimeout(() => { applyNativeSchedule(); checkAuto(); A()?.render?.(); }, 900);
 })();

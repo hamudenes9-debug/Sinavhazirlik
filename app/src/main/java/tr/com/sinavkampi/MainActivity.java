@@ -44,10 +44,11 @@ public final class MainActivity extends Activity {
     private SpeechRecognizer recognizer;
     private boolean pageReady;
     private boolean pendingAiCall;
+    private String pendingAiKind = "intake";
     private static final String HOME = "https://appassets.androidplatform.net/assets/www/index.html";
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        pendingAiCall = getIntent() != null && getIntent().getBooleanExtra("ai_call", false);
+        if (getIntent() != null && getIntent().getBooleanExtra("ai_call", false)) { pendingAiCall = true; pendingAiKind = getIntent().getStringExtra("ai_kind"); }
         getWindow().setStatusBarColor(Color.rgb(246,247,242));
         getWindow().setNavigationBarColor(Color.WHITE);
         assetLoader = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
@@ -92,6 +93,7 @@ public final class MainActivity extends Activity {
         super.onNewIntent(intent); setIntent(intent);
         if (intent != null && intent.getBooleanExtra("ai_call", false)) {
             pendingAiCall = true;
+            pendingAiKind = intent.getStringExtra("ai_kind");
             if (pageReady) deliverAiCall(); else if (web != null) web.loadUrl(HOME);
         }
     }
@@ -103,7 +105,8 @@ public final class MainActivity extends Activity {
     private void deliverAiCall() {
         if (!pendingAiCall || web == null || !pageReady) return;
         pendingAiCall = false;
-        web.postDelayed(() -> web.evaluateJavascript("window.KampAI&&window.KampAI.openFromNotification()", null), 700);
+        String kind = pendingAiKind == null || pendingAiKind.isEmpty() ? "intake" : pendingAiKind;
+        web.postDelayed(() -> web.evaluateJavascript("window.KampAI&&window.KampAI.openFromNotification(" + JSONObject.quote(kind) + ")", null), 700);
     }
     private void js(String script) { if (web != null) web.post(() -> web.evaluateJavascript(script, null)); }
     private void initTts() {
@@ -279,10 +282,10 @@ public final class MainActivity extends Activity {
         }
         @JavascriptInterface public void configureAiCall(String json) { AiCall.configure(MainActivity.this, json); }
         @JavascriptInterface public String aiCallStatus() {
-            try { return new JSONObject().put("enabled", AiCall.enabled(MainActivity.this)).put("time", AiCall.time(MainActivity.this)).toString(); }
+            try { return new JSONObject().put("enabled", AiCall.enabled(MainActivity.this)).put("scheduled", AiCall.prefs(MainActivity.this).getInt("aiScheduled", 0)).toString(); }
             catch (Exception e) { return "{}"; }
         }
-        @JavascriptInterface public String testAiCall() { return AiCall.notifyNow(MainActivity.this, true); }
+        @JavascriptInterface public String testAiCall(String payload) { return AiCall.testNotify(MainActivity.this, payload); }
         @JavascriptInterface public void sharePDF(String file) {
             try{Uri uri=FileProvider.getUriForFile(MainActivity.this,getPackageName()+".files",copyPDF(file));Intent send=new Intent(Intent.ACTION_SEND).setType("application/pdf").putExtra(Intent.EXTRA_STREAM,uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(send,"PDF’yi paylaş veya kaydet"));}catch(Exception e){message("PDF paylaşılamadı.");}
         }

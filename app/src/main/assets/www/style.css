@@ -190,3 +190,12 @@ body.call-open{overflow:hidden}
  .call-btn>.icon{width:48px;height:48px;padding:14px}
 }
 @media(max-width:370px){.hw-form{grid-template-columns:1fr}.call-card-actions .btn{width:100%}.call-note{width:100%}}
+
+/* Günlük çıkış saatleri */
+.day-list{display:grid;gap:7px;margin:14px 0 4px}
+.day-row{display:flex;align-items:center;gap:9px}
+.day-row>span{flex:1;font-size:11px;color:#647559}
+.day-row input[type=time]{width:104px;border:1px solid #dfe7d6;border-radius:7px;padding:6px 8px;font-size:11px;background:#fbfcf9;color:var(--ink)}
+.day-clear{width:26px;height:26px;border-radius:7px;border:1px solid #e6ece0;background:#fff;color:#9aa88d;font-size:13px;line-height:1;display:grid;place-items:center}
+.day-clear:hover{color:#b45a42;border-color:#f0d8cf;background:#fbeee9}
+.call-card-actions .btn-white[data-ai="call-intake"]{border-color:#c8dcb8;color:#eaf4e1}

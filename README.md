@@ -2,9 +2,9 @@
 
 6. sınıf sınav hazırlık uygulaması. Türkiye saatiyle kişisel sınav takvimi, 12 günlük kamp, görev takibi, 25 dakikalık odak sayacı, 68 soruluk açıklamalı testler, 15 çevrimdışı PDF ve **ödev için okul çıkışı arayan sesli yapay zekâ koçu** içerir.
 
-## Sürüm 1.3.0
+## Sürüm 1.4.0
 
-- **Kamp Koçu:** ödev listesi ve hafta içi okul çıkışı araması (varsayılan 16:30).
+- **Kamp Koçu:** günlük çıkış saatine göre arama (Pzt 16:00, diğer günler 15:10 gibi), sesli ödev sorma/kaydetme ve teslimden bir gün önce hatırlatma.
 - Sesli brifing, mikrofonla/yazarak sohbet, “ödevimi yaptım” işaretleme.
 - Groq bağlantısı: anahtar cihazda veya `GROQ_API_KEY` depo sırrıyla gömülü. Ayrıntılar: [AI-KOC.md](AI-KOC.md).
 - Proje: **sinavkam**
