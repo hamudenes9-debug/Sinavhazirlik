@@ -86,6 +86,7 @@ public final class MainActivity extends Activity {
             @Override public void onPageFinished(WebView view, String url) { pageReady = true; refreshStatus(); deliverAiCall(); }
         });
         if (savedInstanceState == null) web.loadUrl(HOME); else web.restoreState(savedInstanceState);
+        web.postDelayed(this::initTts, 1200);
     }
     @Override protected void onSaveInstanceState(Bundle state) { super.onSaveInstanceState(state); web.saveState(state); }
     @Override protected void onResume() { super.onResume(); refreshStatus(); deliverAiCall(); }
@@ -119,6 +120,19 @@ public final class MainActivity extends Activity {
                     int fallback = tts.setLanguage(Locale.getDefault());
                     ttsReady = fallback != TextToSpeech.LANG_MISSING_DATA && fallback != TextToSpeech.LANG_NOT_SUPPORTED;
                 }
+            }
+            if (ttsReady) {
+                try {
+                    tts.setSpeechRate(1.12f);
+                    tts.setPitch(1.0f);
+                    TextToSpeech.Voice best = null;
+                    for (TextToSpeech.Voice voice : tts.getVoices()) {
+                        if (!"tr".equals(voice.getLocale().getLanguage())) continue;
+                        if (voice.isNetworkConnectionRequired()) continue; // çevrimdışı ve hızlı ses
+                        if (best == null || voice.getQuality() > best.getQuality()) best = voice;
+                    }
+                    if (best != null) tts.setVoice(best);
+                } catch (Exception ignored) { }
             }
             if (!ttsReady) {
                 ttsFailed = true;
@@ -255,6 +269,7 @@ public final class MainActivity extends Activity {
             try{startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,Uri.parse("package:"+getPackageName())));}catch(Exception e){openAppSettings();}
         }
         @JavascriptInterface public void openPDF(String file){MainActivity.this.openPDF(file);}
+        @JavascriptInterface public void aiChat(String payload) { AiChat.request(web, payload); }
         @JavascriptInterface public void speak(String text) {
             if (text == null || text.isEmpty()) return;
             final String clean = text.length() > 3600 ? text.substring(0, 3600) : text;

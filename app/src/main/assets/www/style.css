@@ -199,3 +199,11 @@ body.call-open{overflow:hidden}
 .day-clear{width:26px;height:26px;border-radius:7px;border:1px solid #e6ece0;background:#fff;color:#9aa88d;font-size:13px;line-height:1;display:grid;place-items:center}
 .day-clear:hover{color:#b45a42;border-color:#f0d8cf;background:#fbeee9}
 .call-card-actions .btn-white[data-ai="call-intake"]{border-color:#c8dcb8;color:#eaf4e1}
+
+.ai-test-result{font-size:10px;line-height:1.6;color:#8d9a84;margin-top:9px;margin-bottom:2px;min-height:14px}
+.ai-test-result.ok{color:#5d8049;background:#f2f8ec;border:1px solid #e2eed7;border-radius:8px;padding:8px 9px}
+.ai-test-result.bad{color:#9a5334;background:#fbeee7;border:1px solid #f2d9cc;border-radius:8px;padding:8px 9px}
+.ai-clear-key{font-size:10px;padding:6px 0;min-height:0;color:#9a8681}
+
+.ai-key-warn{display:flex;align-items:flex-start;gap:7px;font-size:10px;line-height:1.6;color:#8a5a3a;background:#fdf3e7;border:1px solid #f2e0c9;border-radius:8px;padding:9px;margin:6px 0 0}
+.ai-key-warn .icon{width:13px;height:13px;margin-top:1px;flex:0 0 auto}

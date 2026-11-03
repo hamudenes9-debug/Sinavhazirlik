@@ -44,7 +44,7 @@ await page.goto('http://127.0.0.1:3000/#aiko');await page.waitForSelector('#hw-f
 assert.equal(await page.locator('#firebase-config-form').count(),0);
 await page.locator('#hw-form [name="title"]').fill('Matematik çalışma kağıdı');await page.locator('#hw-form [name="subject"]').selectOption('matematik');await page.locator('#hw-form button[type="submit"]').click();
 await page.waitForSelector('.hw-row');assert.equal(await page.locator('.hw-row').count(),1);assert.match(await page.locator('.hw-row').innerText(),/Matematik çalışma kağıdı/);
-await page.route('https://api.groq.com/**',r=>r.abort());
+await page.route('https://api.groq.com/**',r=>r.abort());await page.route('**/api/groq',r=>r.fulfill({status:200,contentType:'application/json',body:'{"error":"network"}'}));
 await page.locator('[data-ai="call-now"]').first().click();await page.waitForSelector('#ai-call:not([hidden])');
 await page.waitForSelector('#call-log .call-bubble.coach',{timeout:15000});
 assert.match(await page.locator('#call-caption').innerText(),/Merhaba|akşamlar|ödev/i);
@@ -52,7 +52,7 @@ await page.locator('#call-input').fill('Matematik ödevini yaptım');await page.
 await page.waitForFunction(()=>document.querySelectorAll('#call-log .call-bubble').length>=4);
 assert.match(await page.locator('#call-log').innerText(),/tamamlandı olarak işaretlendi/);
 await page.locator('[data-ai="hangup"]').click();assert(await page.locator('#ai-call').isHidden());
-await page.unroute('https://api.groq.com/**');
+await page.unroute('https://api.groq.com/**');await page.unroute('**/api/groq');
 await page.locator('[data-ai="call-intake"]').click();await page.waitForSelector('#ai-call:not([hidden])');
 await page.waitForSelector('#call-log .call-bubble.coach',{timeout:15000});
 assert.match(await page.locator('#call-caption').innerText(),/hangi ödevleri verdiler/i);

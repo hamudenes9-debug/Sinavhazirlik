@@ -135,3 +135,13 @@ test('the day before, the coach says "ödevin var, unutma"', () => {
   assert.match(text, /^Ahmet! Yarın Fen özeti ödevin var, unutma!/);
   assert.equal(AI.dueReminder({ homework, tomorrow: '2026-11-09', today: '2026-11-03', name: 'Ahmet' }), null);
 });
+
+test('connection errors are explained in plain Turkish', () => {
+  assert.match(AI.explainAiError(new Error('no-key')), /anahtar/i);
+  assert.match(AI.explainAiError(new Error('groq-401: invalid api key')), /geçersiz/i);
+  assert.match(AI.explainAiError(new Error('groq-429: rate limit')), /sınır/i);
+  assert.match(AI.explainAiError(new Error('timeout')), /gecik/i);
+  assert.match(AI.explainAiError(new Error('native-401')), /geçersiz/i);
+  assert.match(AI.explainAiError(new Error('Failed to fetch')), /ulaşılamadı/i);
+  assert.equal(typeof AI.explainAiError(new Error('groq-500: boom')), 'string');
+});

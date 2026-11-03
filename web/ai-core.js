@@ -305,6 +305,19 @@ function offlineAnswer(text,ctx){
   if(isGreeting(text))return 'Merhaba! Bugünkü ödevlerin tamam görünüyor. Kısa bir sınav tekrarı yapalım mı?';
   return 'Şu an internete ulaşamadım ama ödevlerini biliyorum. Yeni bir ödev ekleyebilir veya sınav tekrarı isteyebilirsin.';
 }
+/* Groq/bağlantı hatasını öğrencinin anlayacağı tek cümleye çevirir. */
+function explainAiError(err){
+  const raw=String(err&&err.message?err.message:err||'').toLowerCase();
+  const status=(raw.match(/(?:groq|native|proxy)-(\d{3})/)||[])[1];
+  if(raw.includes('no-key'))return 'Yapay zekâ anahtarı yok. Ödev & AI koç ekranındaki anahtar alanına Groq anahtarını gir.';
+  if(status==='401'||status==='403')return 'Groq anahtarı geçersiz veya iptal edilmiş. Yeni anahtar oluşturup anahtar alanına gir.';
+  if(status==='429')return 'Groq dakika sınırına takıldı. Birkaç saniye bekleyip tekrar dene.';
+  if(status==='404')return 'Groq modeli bulunamadı. Uygulamayı güncelle.';
+  if(raw.includes('timeout')||raw.includes('abort'))return 'Groq yanıtı gecikti. İnterneti kontrol edip tekrar dene.';
+  if(raw.includes('empty'))return 'Groq boş yanıt döndürdü. Tekrar dene.';
+  if(raw.includes('offline')||raw.includes('failed to fetch')||raw.includes('network')||raw.includes('load failed'))return 'Groq’a ulaşılamadı. İnternet bağlantısını kontrol et; APK sürümünde bağlantı doğrudan Android üzerinden yapılır.';
+  return 'Groq bağlantısı kurulamadı. İnterneti kontrol edip tekrar dene.';
+}
 function validateHomeworkItem(item){
   if(!item||typeof item!=='object')return false;
   if(typeof item.id!=='string'||!/^hw-[a-zA-Z0-9-]{1,60}$/.test(item.id))return false;
@@ -326,6 +339,6 @@ function sanitizeSettings(obj){
   const name=typeof o.name==='string'?o.name.trim().replace(/\s+/g,' ').slice(0,24):'';
   return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy};
 }
-const api={nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
+const api={explainAiError,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
 if(typeof module!=='undefined')module.exports=api;else root.KampAIcore=api;
 })(typeof window!=='undefined'?window:globalThis);

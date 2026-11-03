@@ -20,6 +20,7 @@ let call = null;
 let overlay = null;
 let callTimer = null;
 let autoTimer = null;
+const pendingAi = new Map();
 
 function loadSettings() {
   try {
@@ -143,14 +144,16 @@ function renderPage() {
 
       <section class="card card-padding settings-card">
         <h2>Yapay zekâ anahtarı</h2>
-        <p class="ai-copy">Anahtar yalnızca bu cihazda saklanır. Sadece Groq’a soru gönderirken kullanılır; buluta eşitlenmez ve depoya yazılmaz.</p>
-        ${CONFIG.key ? `<p class="ai-builtin">${app.icon('check')} Uygulamaya gömülü anahtar kullanılıyor. İstersen kendi anahtarını yazabilirsin.</p>` : ''}
+        <p class="ai-copy">${CONFIG.key ? 'Uygulamaya gömülü Groq anahtarı hazır gelir.' : 'Groq anahtarını bir kez buraya gir; koç ayrıntılı yardım verebilsin.'} Anahtar yalnızca bu cihazda saklanır, buluta eşitlenmez.</p>
+        ${CONFIG.key ? `<p class="ai-builtin">${app.icon('check')} Gömülü anahtar etkin.</p>` : (keyReady ? `<p class="ai-builtin">${app.icon('check')} Anahtar kayıtlı. Bağlantı çalışmazsa “Bağlantıyı test et” ile kontrol et.</p>` : `<p class="ai-key-warn">${app.icon('info')} Anahtar yok: koç şimdilik yalnızca ödev/sınav bilgilerini söyler. console.groq.com üzerinden ücretsiz anahtar oluşturup buraya yapıştır.</p>`)}
         <label class="form-field"><span>Groq API anahtarı</span><input id="ai-key" type="password" autocomplete="off" spellcheck="false" placeholder="${CONFIG.key ? 'Kendi anahtarın (isteğe bağlı)' : 'gsk_...'}" value="${esc(settings.key)}"></label>
         <div class="ai-key-actions">
           <button class="btn btn-primary" data-ai="save-key">Kaydet</button>
-          <button class="btn btn-white" data-ai="clear-key">Sil</button>
+          <button class="btn btn-white" data-ai="test-ai">Bağlantıyı test et</button>
         </div>
-        <p class="ai-key-state ${keyReady ? 'ready' : ''}">${keyReady ? `${app.icon('check')} Anahtar hazır: koç ayrıntılı yardım verebilir.` : 'Anahtar yok: koç ödev ve sınav bilgilerini yine sesli söyler.'}</p>
+        <p class="ai-test-result" id="ai-test-result">${keyReady ? 'Groq bağlantısını denemek için “Bağlantıyı test et” düğmesine bas.' : ''}</p>
+        <button class="btn btn-ghost ai-clear-key" data-ai="clear-key">Anahtarı sil</button>
+
       </section>
 
       <section class="card card-padding">
@@ -398,12 +401,22 @@ function speak(text) {
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'tr-TR'; u.rate = 1; u.pitch = 1;
+      u.lang = 'tr-TR'; u.rate = 1.05; u.pitch = 1.02;
+      const voice = bestTurkishVoice();
+      if (voice) u.voice = voice;
       u.onend = finish; u.onerror = finish;
       window.speechSynthesis.speak(u);
       return;
     } catch {}
   }
+}
+
+function bestTurkishVoice() {
+  try {
+    const voices = window.speechSynthesis?.getVoices?.() || [];
+    const turkish = voices.filter(v => /^tr/i.test(v.lang || ''));
+    return turkish.find(v => /google/i.test(v.name)) || turkish[0] || null;
+  } catch { return null; }
 }
 
 function listen() {
@@ -494,6 +507,9 @@ async function handleUser(text) {
     try { reply = await askGroq(text); }
     catch (err) {
       console.warn('Groq', err);
+      const hint = AIC.explainAiError(err);
+      setStatus(hint);
+      addBubble('note', hint);
       reply = AIC.offlineAnswer(text, offlineContext());
     }
   } else {
@@ -508,28 +524,73 @@ function offlineContext() {
   return { today: today(), homework, subjects: subjects(), exam: nextExam(), name: name() };
 }
 
-async function askGroq(userText) {
-  const key = currentKey();
-  const proxy = settings.proxy || CONFIG.proxy || '';
+function buildUserMessages(userText) {
   const base = { userText, history: call.messages.slice(0, -1), today: today(), homework, exams: [], tasks: [], name: name() };
   try {
     const app = A();
     base.exams = app.activeExams().slice(0, 4).map(e => ({ name: e.name, date: e.date, days: app.C.daysBetween(app.C.today(), e.date) }));
     base.tasks = app.todayPlan().map(t => ({ title: t.title, done: !!app.getState().completed[t.id] }));
   } catch {}
-  const messages = AIC.composeMessages(base);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
-  try {
-    if (proxy) {
-      const res = await fetch(proxy, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }), signal: controller.signal });
-      if (!res.ok) throw new Error('proxy-' + res.status);
-      const data = await res.json();
-      const text = data.reply || data.choices?.[0]?.message?.content;
-      if (!text) throw new Error('empty');
-      return String(text).trim().slice(0, 800);
+  return AIC.composeMessages(base);
+}
+
+/* Android köprüsü: istek WebView'dan değil doğrudan Java'dan gider, CORS engeli olmaz. */
+function nativeChat(payload) {
+  const b = bridge();
+  return new Promise((resolve, reject) => {
+    const id = 'r' + Date.now() + Math.random().toString(36).slice(2, 6);
+    const timer = setTimeout(() => { pendingAi.delete(id); reject(new Error('timeout')); }, 25000);
+    pendingAi.set(id, { resolve, reject, timer });
+    try {
+      const raw = b.aiChat(JSON.stringify({ id, ...payload }));
+      if (raw) {
+        const quick = JSON.parse(raw);
+        if (quick && quick.ok === false) {
+          clearTimeout(timer); pendingAi.delete(id);
+          reject(new Error(quick.error || 'native-error'));
+        }
+      }
+    } catch (e) {
+      clearTimeout(timer); pendingAi.delete(id);
+      reject(new Error('native-' + (e?.message || 'error')));
     }
-    if (!key) throw new Error('no-key');
+  });
+}
+function aiReply(id, payload) {
+  const slot = pendingAi.get(id);
+  if (!slot) return;
+  pendingAi.delete(id);
+  clearTimeout(slot.timer);
+  let data = payload;
+  if (typeof payload === 'string') { try { data = JSON.parse(payload); } catch { data = { ok: false, error: payload }; } }
+  if (!data) return slot.reject(new Error('empty'));
+  if (data.ok && data.text) return slot.resolve(String(data.text).trim());
+  return slot.reject(new Error(data.error || 'native-error'));
+}
+
+async function fetchGroq(key, messages) {
+  /* Tarayıcıda Groq CORS'a takılabilir: önce aynı adresteki küçük proxy'yi dene. */
+  if (/^https?:$/.test(location.protocol)) {
+    for (const model of [...new Set(MODELS)]) {
+      try {
+        const res = await fetch('/api/groq', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, messages }) });
+        if (!res.ok) break;
+        const data = await res.json();
+        if (data.error) {
+          if (/model|decommission/i.test(String(data.detail || ''))) continue;
+          if (data.error === 'network' || data.error === 'no-key') break; // doğrudan isteğe geç
+          throw new Error(data.error);
+        }
+        if (data.text) return String(data.text).trim().slice(0, 800);
+      } catch (err) {
+        if (String(err.message).startsWith('groq-')) throw err;
+        break; // proxy yok; doğrudan isteğe geç
+      }
+    }
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 22000);
+  try {
     let lastErr = null;
     for (const model of [...new Set(MODELS)]) {
       const res = await fetch(GROQ_URL, {
@@ -550,6 +611,67 @@ async function askGroq(userText) {
     }
     throw lastErr || new Error('groq');
   } finally { clearTimeout(timeout); }
+}
+
+async function askGroq(userText) {
+  const key = currentKey();
+  const proxy = settings.proxy || CONFIG.proxy || '';
+  const messages = buildUserMessages(userText);
+  if (proxy) {
+    const res = await fetch(proxy, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) });
+    if (!res.ok) throw new Error('proxy-' + res.status);
+    const data = await res.json();
+    const text = data.reply || data.choices?.[0]?.message?.content;
+    if (!text) throw new Error('empty');
+    return String(text).trim().slice(0, 800);
+  }
+  if (!key) throw new Error('no-key');
+  const b = bridge();
+  if (b && typeof b.aiChat === 'function') {
+    try { return await nativeChat({ key, messages, models: MODELS }); }
+    catch (err) {
+      /* Köprü yanıt vermezse tarayıcı yolunu bir kez dene (ör. eski APK). */
+      if (String(err.message).startsWith('native-')) return fetchGroq(key, messages);
+      throw err;
+    }
+  }
+  return fetchGroq(key, messages);
+}
+
+/* Bağlantı testi: gerçek bir Groq isteği atar ve sonucu ekranda gösterir. */
+async function testConnection() {
+  const box = $('#ai-test-result');
+  const key = currentKey();
+  if (box) { box.className = 'ai-test-result'; box.textContent = 'Groq’a bağlanılıyor…'; }
+  if (!key) {
+    if (box) { box.className = 'ai-test-result bad'; box.textContent = AIC.explainAiError(new Error('no-key')); }
+    A()?.toast('Anahtar yok.');
+    return false;
+  }
+  try {
+    const b = bridge();
+    let answer;
+    if (b && typeof b.aiChat === 'function') {
+      answer = await nativeChat({ key, ping: true, models: MODELS });
+    } else {
+      const res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+        body: JSON.stringify({ model: MODELS[0], messages: [{ role: 'user', content: 'Tek kelimeyle yanıtla: hazır' }], max_tokens: 8 })
+      });
+      if (!res.ok) throw new Error('groq-' + res.status);
+      const data = await res.json();
+      answer = data.choices?.[0]?.message?.content || 'hazır';
+    }
+    if (box) { box.className = 'ai-test-result ok'; box.textContent = `Bağlantı tamam. Groq yanıtı: “${String(answer).trim().slice(0, 40)}”`; }
+    A()?.toast('Groq bağlantısı çalışıyor.');
+    return true;
+  } catch (err) {
+    const text = AIC.explainAiError(err);
+    if (box) { box.className = 'ai-test-result bad'; box.textContent = text; }
+    A()?.toast(text);
+    return false;
+  }
 }
 
 function syncMicButton() {
@@ -598,6 +720,7 @@ function onAiClick(btn) {
       settings.key = value; saveSettings(); A().render(); A().toast(value ? 'Anahtar kaydedildi. Koç artık ayrıntılı yardım verebilir.' : 'Anahtar silindi.');
       break;
     }
+    case 'test-ai': testConnection(); break;
     case 'clear-key': settings.key = ''; saveSettings(); A().render(); A().toast('Anahtar bu cihazdan silindi.'); break;
     case 'toggle-hw': toggleHomework(id); A().render(); break;
     case 'delete-hw': deleteHomework(id); A().render(); A().toast('Ödev listeden kaldırıldı.'); break;
@@ -693,7 +816,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else install();
 
 window.KampAI = {
-  renderPage, homeCard, openFromNotification, startCall, endCall, syncFab,
+  renderPage, _aiReply: aiReply, testConnection, homeCard, openFromNotification, startCall, endCall, syncFab,
   _speakDone: () => { if (call?.speakDone) call.speakDone(); },
   _onSpeech: text => { if (call?.active && text) handleUser(String(text)); },
   _onSpeechError: code => {
