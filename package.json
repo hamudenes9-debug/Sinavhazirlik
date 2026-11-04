@@ -1,6 +1,6 @@
 {
   "name": "sinav-kampi",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "private": true,
   "description": "6. sınıf kişisel sınav hazırlık uygulaması — çevrimdışı web ve Android",
   "scripts": {

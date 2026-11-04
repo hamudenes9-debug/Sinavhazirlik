@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.7.0**: koçun sabit cümleleri artık **uygulamayla gelen doğal Türkçe ses kayıtlarıyla** okunur; cihazın robotik sesi yalnızca serbest cevaplarda kullanılır. **79 maddelik 6. sınıf bilgi bankası** ve **hesap makinesi** eklendi, böylece anahtar olmadan da ders soruları yanıtlanır. Sohbet cümleleri **üç katmanda** süzülür ve hiçbir koşulda ödev olarak kaydedilmez.
+Sürüm **1.7.1**: koçun sabit cümleleri artık **uygulamayla gelen doğal Türkçe ses kayıtlarıyla** okunur; cihazın robotik sesi yalnızca serbest cevaplarda kullanılır. **79 maddelik 6. sınıf bilgi bankası** ve **hesap makinesi** eklendi, böylece anahtar olmadan da ders soruları yanıtlanır. Sohbet cümleleri **üç katmanda** süzülür ve hiçbir koşulda ödev olarak kaydedilmez.
 
 ## Akıllı davranış
 
