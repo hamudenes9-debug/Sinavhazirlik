@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.8.1** ile koç tamamen **cihazın içinde** çalışır: **143 maddelik 6. sınıf bilgi bankası**, **261 kayıtlık arama dizini**, gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq/API anahtarı tamamen kaldırıldı; hiçbir veri sunucuya gitmiyor.
+Sürüm **1.8.2** ile koç tamamen **cihazın içinde** çalışır: **143 maddelik 6. sınıf bilgi bankası**, **261 kayıtlık arama dizini**, gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq/API anahtarı tamamen kaldırıldı; hiçbir veri sunucuya gitmiyor.
 
 ## Akıllı davranış
 
@@ -67,6 +67,8 @@ Nasıl “zeki” oluyor?
 Ders dışı bir soruya uydurma cevap vermez: eşleşme yoksa “bunu notlarımdan çıkaramadım” der ve konuyu sorar.
 
 ## Sesli arama: yazma yok, zil var
+
+Ayarlar → **“Zili ve sesi dene”** düğmesi önce zil sesini, sonra koçun sesini çalar. Ses duyulmuyorsa telefonun medya sesi kısıktır. Android WebView’de `mediaPlaybackRequiresUserGesture` kapatıldığı için planlı aramalarda zil ve ses otomatik çalabilir.
 
 - Arama ekranında **yazma alanı yoktur**; koç yalnızca mikrofonla dinler ve sesli cevap verir.
 - Koç seni aradığında (çıkış araması ve teslim hatırlatması) önce **zil sesi** çalar (`voice/ring.wav`, uygulamayla gelir), ardından konuşmaya başlar.

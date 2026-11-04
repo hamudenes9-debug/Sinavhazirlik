@@ -53,6 +53,11 @@ function playRing() {
     if (played && played.catch) played.catch(() => { clipAudio = null; });
   } catch {}
 }
+function testAudio() {
+  playRing();
+  setTimeout(() => speak('Merhaba, ben Kamp Koçu. Zil sesi ve sesim böyle geliyor.'), 1400);
+  return 'Zil çalıyor, ardından koç konuşacak. Telefonun medya sesini açmayı unutma.';
+}
 function speakClip(name, ok, fail) {
   try {
     if (!CLIPS[name] || settings.voicePack === false) return false;
@@ -199,7 +204,7 @@ function renderPage() {
           <li><span>“12 × 8 kaç eder?”</span><small>Gerçekten hesaplar.</small></li>
           <li><span>“Bana soru sor”</span><small>Test sorusu sorar, cevabını değerlendirir.</small></li>
         </ul>
-        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.8.1.</p>
+        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.8.2.</p>
       </section>
 
       <section class="card card-padding">
@@ -219,7 +224,7 @@ function renderPage() {
           <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
           <button class="btn btn-white" data-ai="install-voice">Türkçe sesi indir</button>
         </div>
-        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.8.1.</p>
+        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.8.2.</p>
       </section>
 
       <section class="card card-padding">
@@ -904,6 +909,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else install();
 
 window.KampAI = {
+  testAudio,
   renderPage, homeCard, openFromNotification, startCall, endCall, syncFab,
   _speakDone: () => { if (call?.speakDone) call.speakDone(); },
   _clipResult: (name, ok) => {
