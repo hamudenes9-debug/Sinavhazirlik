@@ -322,6 +322,7 @@ function classifyUtterance(text,subjects){
   if(IDENTITY_PATTERNS.some(p=>n.includes(p)))return 'identity';
   if(/ne yapabilirsin|neler yapabilirsin|nasil yardim|ne ise yararsin/.test(n))return 'capabilities';
   if(/bana soru sor|beni yokla|beni sina|test et|quiz|soru sorar misin/.test(n))return 'quiz';
+  if(/daha basit|anlamadim|anlayamadim|tekrar anlat|kisaca anlat|anlatamadin/.test(n))return 'simplify';
   if(hasWord(n,DONE_WORDS))return 'done';
   if(hasWord(n,HELP_WORDS)&&(matchSubject(raw,subjects)||/odev|soru|konu/.test(n)))return 'help';
   if(noHomework(raw))return 'no-homework';
@@ -351,6 +352,7 @@ function offlineAnswer(text,ctx){
   const intent=classifyUtterance(text,subjects);
   if(intent==='identity')return identityAnswer(c);
   if(intent==='quiz')return 'Hemen soruyorum. Cevabını söyle, birlikte bakalım.';
+  if(intent==='simplify')return 'Hangi konuda takıldığını söyle, onu daha basit anlatayım.';
   if(intent==='capabilities')return 'Ödevlerini sesli olarak kaydediyorum, teslimden önce seni arıyorum, sınav takvimini söylüyorum ve ders sorularına ipucu veriyorum. İstersen “matematik ödevini yaptım” de, işaretleyeyim.';
   if(/kac odev|odevlerim ne|odev listesi|odevlerim neler/.test(norm(text))){
    const pending=pendingHomework(c.homework);
@@ -358,6 +360,8 @@ function offlineAnswer(text,ctx){
    return `${pending.length} ödevin bekliyor: ${pending.slice(0,4).map(h=>h.title).join(', ')}.`;
   }
   const n=norm(text);
+  const earlyUnit=convertUnits(text);
+  if(earlyUnit)return earlyUnit;
   if(/nasilsin|naber|ne haber/.test(n))return `${c.name?c.name+', ':''}iyiyim, teşekkürler! Sen nasılsın? Hazırsan bugünkü ödevleri konuşalım.`;
   if(/kac yasindasin|yasin kac|kac yasinda/.test(n))return 'Ben bir yapay zekâ koçuyum; insanlar gibi yaşım yok. Ama 6. sınıf konularını seninle birlikte çalışacak kadar biliyorum.';
   if(/ne yapiyorsun|napiyorsun|ne yaptigin/.test(n))return 'Senin ödevlerini ve sınavlarını takip ediyorum. Şu an seninle konuşuyorum; istersen bir ders sorusu sor ya da “bana soru sor” de.';
@@ -398,6 +402,10 @@ function offlineAnswer(text,ctx){
    ];
    return jokes[Math.floor(Math.random()*jokes.length)]+' Şimdi istersen bir ders sorusu da sorabilirsin.';
   }
+  const unit=convertUnits(text);
+  if(unit)return unit;
+  const word=translateWord(text);
+  if(word)return word;
   const math=solveMath(text);
   if(math)return math;
   const local=knowledgeAnswer(text,c);
@@ -493,6 +501,39 @@ function studyPlan(ctx){
   return 'Bugünkü planım: '+steps.slice(0,3).map((s2,i)=>`${i+1}) ${s2}`).join(' ')+' Başlayalım mı?';
 }
 
+/* Uzunluk, kütle, hacim ve zaman birimlerini çevirir: “3 km kaç m?” */
+const UNITS={
+  mm:{group:'len',factor:0.001},cm:{group:'len',factor:0.01},m:{group:'len',factor:1},km:{group:'len',factor:1000},
+  mg:{group:'mass',factor:0.001},g:{group:'mass',factor:1},kg:{group:'mass',factor:1000},
+  ml:{group:'vol',factor:0.001},litre:{group:'vol',factor:1},lt:{group:'vol',factor:1},
+  saniye:{group:'time',factor:1},dakika:{group:'time',factor:60},dk:{group:'time',factor:60},saat:{group:'time',factor:3600},gun:{group:'time',factor:86400}
+};
+function convertUnits(text){
+  const n=norm(text);
+  const m=/(\d+(?:[.,]\d+)?)\s*(kg|mg|km|cm|mm|litre|lt|ml|m|g|saat|dakika|dk|gun|saniye)\s*(?:kac|kaca|->|=)\s*(kg|mg|km|cm|mm|litre|lt|ml|m|g|saat|dakika|dk|gun|saniye)/.exec(n);
+  if(!m)return null;
+  const from=m[2],to=m[3];
+  if(!UNITS[from]||!UNITS[to]||UNITS[from].group!==UNITS[to].group)return null;
+  const value=Number(String(m[1]).replace(',','.'))*UNITS[from].factor/UNITS[to].factor;
+  const out=Math.round(value*100000)/100000;
+  return `${fmtNum(Number(String(m[1]).replace(',','.')))} ${from} = ${fmtNum(out)} ${to}.`;
+}
+
+/* “apple ne demek?” / “elma ingilizce ne?” */
+function translateWord(text){
+  const words=(typeof root!=='undefined'&&root.KAMP_WORDS)||{};
+  const keys=Object.keys(words);
+  if(!keys.length)return null;
+  const n=norm(text);
+  const m=/([a-z]+)\s+(?:ne demek|ne anlama geliyor|anlami ne|ingilizcesi ne|turkcesi ne|ingilizcede ne|ingilizce ne demek|turkce ne demek|ingilizcesi nedir)/.exec(n);
+  if(!m)return null;
+  const word=m[1];
+  if(words[word])return `“${word}” Türkçede “${words[word]}” demek.`;
+  const tr=keys.find(k=>norm(words[k])===word);
+  if(tr)return `“${word}” İngilizcede “${tr}” demek.`;
+  return null;
+}
+
 /* Sesli okumak için metni sadeleştirir (emoji, markdown, uzun parantezler). */
 function speechText(text,limit){
   let out=String(text||'')
@@ -538,7 +579,7 @@ function buildKnowledgeIndex(content){
     if(!item||!item.a)continue;
     const s2=(subjects[item.s]&&subjects[item.s].name)||item.s||'';
     const text=`${item.q||''} ${item.k||''} ${s2}`;
-    index.push({subject:item.s||'',kind:'kb',weight:1.7,text:item.a,tokens:norm(text),stems:stems(text)});
+    index.push({subject:item.s||'',kind:'kb',weight:1.7,text:item.a,tokens:norm(text),stems:stems(text),qNorm:norm(item.q||'')});
   }
   const quizzes=(content&&content.quizzes)||{};
   for(const [subject,list] of Object.entries(quizzes)){
@@ -575,6 +616,7 @@ function searchKnowledge(text,index,limit){
     for(const stem of query){
       if(stemsArr.includes(stem)){matched++;raw+=df[stem]<=5?2.2:df[stem]<=12?1.6:1.2;}
     }
+    if(item.qNorm&&item.qNorm===norm(text))raw+=1.4;
     const covers=matched/query.length>=need;
     const rareOk=rare.every(stem=>stemsArr.includes(stem));
     return {item,raw,score:raw*(item.weight||1),ok:covers&&rareOk&&raw>=(query.length===1?1.2:1.6)};
@@ -663,6 +705,6 @@ function sanitizeSettings(obj){
   const rate=Number.isFinite(Number(o.rate))?Math.max(0.7,Math.min(1.4,Number(o.rate))):1.12;
   return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy,voice,rate,preferNetwork:o.preferNetwork!==false,voicePack:o.voicePack!==false};
 }
-const api={inSchoolDomain,knowledgeBrief,solveMath,evalExpression,math:fmtNum,speechText,isNotHomework,buildKnowledgeIndex,searchKnowledge,knowledgeAnswer,studyPlan,classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
+const api={inSchoolDomain,knowledgeBrief,solveMath,evalExpression,math:fmtNum,speechText,isNotHomework,buildKnowledgeIndex,searchKnowledge,knowledgeAnswer,studyPlan,convertUnits,translateWord,classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
 if(typeof module!=='undefined')module.exports=api;else root.KampAIcore=api;
 })(typeof window!=='undefined'?window:globalThis);

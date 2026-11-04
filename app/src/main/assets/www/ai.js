@@ -199,7 +199,7 @@ function renderPage() {
           <li><span>“12 × 8 kaç eder?”</span><small>Gerçekten hesaplar.</small></li>
           <li><span>“Bana soru sor”</span><small>Test sorusu sorar, cevabını değerlendirir.</small></li>
         </ul>
-        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.8.0.</p>
+        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.8.1.</p>
       </section>
 
       <section class="card card-padding">
@@ -219,7 +219,7 @@ function renderPage() {
           <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
           <button class="btn btn-white" data-ai="install-voice">Türkçe sesi indir</button>
         </div>
-        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.8.0.</p>
+        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.8.1.</p>
       </section>
 
       <section class="card card-padding">
@@ -517,6 +517,7 @@ function speak(text, clip) {
   text = AIC.speechText(text);
   if (!text) return;
   call.speaking = true;
+  call.lastAnswer = text;
   setStatus('Koç konuşuyor…');
   setCaption(text);
   addBubble('coach', text);
@@ -624,6 +625,12 @@ async function handleUser(text) {
   if (call.quizOffer && /evet|sor|tabi|olur|devam/.test(AIC.norm(text))) { startQuiz(call.quizOffer); return; }
   if (call.quizOffer) call.quizOffer = null;
   if (intent === 'quiz') { startQuiz(); return; }
+  if (intent === 'simplify') {
+    const last = call.lastAnswer || '';
+    const simple = last.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ').trim();
+    speak(simple ? 'Kısaca: ' + simple : 'Hangi konuda takıldığını söyle, daha basit anlatayım.');
+    return;
+  }
 
   /* Okul çıkışı araması: yalnızca gerçekten ödev söylenmişse kaydet. */
   if (call.mode === 'intake' && !call.intakeDone) {

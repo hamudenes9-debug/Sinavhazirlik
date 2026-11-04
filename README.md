@@ -2,13 +2,13 @@
 
 6. sınıf sınav hazırlık uygulaması. Türkiye saatiyle kişisel sınav takvimi, 12 günlük kamp, görev takibi, 25 dakikalık odak sayacı, 68 soruluk açıklamalı testler, 15 çevrimdışı PDF ve **ödev için okul çıkışı arayan sesli yapay zekâ koçu** içerir.
 
-## Sürüm 1.8.0
+## Sürüm 1.8.1
 
 - **Kamp Koçu:** günlük çıkış saatine göre arama (Pzt 16:00, diğer günler 15:10 gibi), sesli ödev sorma/kaydetme ve teslimden bir gün önce hatırlatma.
 - **Uygulama içi bilgi motoru:** konu özetleri ve soru açıklamalarından anahtarsız yanıt (EBOB, bölünebilme, olasılık, kültür, kıtalar…). Ders dışı sorularda uydurmaz.
 - **Çift korumalı ödev kaydı:** soru/sohbet cümlesi model “ödev” dese bile kaydedilmez.
 - **Doğal ses paketi:** koçun sabit cümleleri uygulamayla gelen 10 doğal Türkçe kayıtla okunur (cihaz sesi gerekmez); hız 0.7–1.4, ses seçimi ve “Sesi dene”.
-- **115 maddelik bilgi bankası + hesap makinesi:** “EBOB nasıl bulunur”, “hücre nedir”, “12 × 8 kaç eder”, “80’in %25’i” gibi sorular anahtarsız yanıtlanır.
+- **143 maddelik bilgi bankası + hesap makinesi + birim/sözlük:** “EBOB nasıl bulunur”, “hücre nedir”, “12 × 8 kaç eder”, “80’in %25’i”, “3 km kaç m”, “apple ne demek” gibi sorular anahtarsız yanıtlanır.
 - **Test modu:** “bana soru sor” deyince 68 sorudan birini sorar, cevabını değerlendirir.
 - **Sesli arama:** yazma yok; koç seni ararken zil sesi çalar.
 - **Akıllı koç:** soruları ödev sanmaz, “Sen kimsin?” gibi sorulara cevap verir, ödevleri niyetine göre kaydeder.

@@ -10,7 +10,7 @@ function loadContent() {
   for (const file of ['content.js', 'kb.js']) {
     vm.runInNewContext(fs.readFileSync(new URL('../web/' + file, import.meta.url), 'utf8'), sandbox);
   }
-  return { content: sandbox.window.KAMP_CONTENT || {}, kb: sandbox.window.KAMP_KB || [] };
+  return { content: sandbox.window.KAMP_CONTENT || {}, kb: sandbox.window.KAMP_KB || [], words: sandbox.window.KAMP_WORDS || {} };
 }
 
 const subjects = {
@@ -198,7 +198,8 @@ test('chatty sentences are never treated as homework', () => {
 
 test('local knowledge answers real lesson questions', () => {
   const { content, kb } = loadContent();
-  assert.ok(kb.length > 100, 'kb entries: ' + kb.length);
+  assert.ok(kb.length > 130, 'kb entries: ' + kb.length);
+  globalThis.KAMP_WORDS = loadContent().words || {};
   const idx = AI.buildKnowledgeIndex({ subjects, quizzes: content.quizzes || {}, kb });
   assert.ok(idx.length > 140, 'index: ' + idx.length);
   const questions = {
@@ -278,4 +279,20 @@ test('Groq is completely gone from the app', async () => {
   assert.equal(/groq|api\.groq/i.test(source), false, 'ai.js hâlâ Groq içeriyor');
   assert.equal(fs.existsSync(new URL('../web/ai-config.js', import.meta.url)), false, 'ai-config.js silinmeli');
   assert.equal(fs.existsSync(new URL('../app/src/main/java/tr/com/sinavkampi/AiChat.java', import.meta.url)), false, 'AiChat.java silinmeli');
+});
+
+test('units and a mini dictionary are answered in the call', () => {
+  globalThis.KAMP_WORDS = loadContent().words;
+  assert.equal(AI.convertUnits('3 km kaç m'), '3 km = 3000 m.');
+  assert.equal(AI.convertUnits('1 saat kaç dakika'), '1 saat = 60 dakika.');
+  assert.equal(AI.convertUnits('500 g kaç kg'), '500 g = 0,5 kg.');
+  assert.equal(AI.convertUnits('3 km kaç kg'), null);
+  assert.match(AI.translateWord('apple ne demek'), /elma/);
+  assert.match(AI.translateWord('kitap ingilizce ne demek'), /kitap.*book/);
+  assert.equal(AI.translateWord('zzzz ne demek'), null);
+});
+
+test('“anlamadım” asks for a simpler retelling', () => {
+  assert.equal(AI.classifyUtterance('anlamadım', subjects), 'simplify');
+  assert.match(AI.offlineAnswer('anlamadım', { subjects, homework, today: '2026-11-04' }), /basit/i);
 });

@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.8.0** ile koç tamamen **cihazın içinde** çalışır: **115 maddelik 6. sınıf bilgi bankası**, **233 kayıtlık arama dizini**, gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq/API anahtarı tamamen kaldırıldı; hiçbir veri sunucuya gitmiyor.
+Sürüm **1.8.1** ile koç tamamen **cihazın içinde** çalışır: **143 maddelik 6. sınıf bilgi bankası**, **261 kayıtlık arama dizini**, gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq/API anahtarı tamamen kaldırıldı; hiçbir veri sunucuya gitmiyor.
 
 ## Akıllı davranış
 
@@ -19,6 +19,8 @@ Koç söyleneni önce **anlar**, sonra kaydeder:
 | “Bana soru sor” | Test sorusu sorar, cevabı değerlendirir, doğru cevabı açıklar |
 | “Bugün ne çalışayım?” | Sınav tarihi ve bekleyen ödevlere göre üç adımlı plan verir |
 | “Nasılsın / kaç yaşındasın?” | Doğal sohbet cevabı verir |
+| “3 km kaç m?” / “apple ne demek?” | 3000 m / “elma” |
+| “Anlamadım” | Son cevabı iki cümlede tekrar eder |
 | “Bugün hava nasıl?” | Ders dışı soruya uydurma cevap vermez, nazikçe konuyu ödeve getirir |
 
 Sohbet cümleleri **üç ayrı katmanda** süzülür: (1) niyet katmanı, (2) ayrıştırılan başlıkların doğrulanması, (3) depolama katmanı (`addHomework`). “Sen kimsin?” gibi bir cümle hiçbir koşulda listeye eklenmez. Engellenen cümlede ekranda “Bu bir sohbet sorusu; ödev olarak kaydetmedim.” bilgisi çıkar.
@@ -37,7 +39,7 @@ Anlama ve cevap üretme tamamen **cihazdaki motor** tarafından yapılır; inter
 - **Sesli sohbet:** mikrofonla veya yazarak cevap verilir. Koç cevabı sesli okur.
 - **Ödev işaretleme:** “Matematik ödevini yaptım” denince o ödev tamamlandı olarak işaretlenir.
 - **Yardım:** “Fen ödevinde takıldım” denince konu hatırlatılır ve küçük bir ipucu verilir.
-- **Çevrimdışı bilgi motoru:** konu özetleri, 68 sorunun açıklaması ve **115 maddelik bilgi bankası** tek bir aranabilir dizinde toplanır (**233 kayıt**). “EBOB nasıl bulunur”, “hücre nedir”, “present simple”, “kültür nedir”, “çemberin çevresi” gibi sorulara anahtar olmadan cevap verir. Türkçe ekler kök eşleştirmesiyle çözülür; ders dışı sorularda tahmin yürütmez.
+- **Çevrimdışı bilgi motoru:** konu özetleri, 68 sorunun açıklaması ve **143 maddelik bilgi bankası** tek bir aranabilir dizinde toplanır (**261 kayıt**). “EBOB nasıl bulunur”, “hücre nedir”, “present simple”, “kültür nedir”, “çemberin çevresi” gibi sorulara anahtar olmadan cevap verir. Türkçe ekler kök eşleştirmesiyle çözülür; ders dışı sorularda tahmin yürütmez.
 - **Hesap makinesi:** “12 × 8 kaç eder”, “144 / 12”, “80’in %25’i”, “2 üssü 5” gibi işlemleri gerçekten hesaplar ve sonucu söyler.
 - **Test modu:** “bana soru sor” dediğinde uygulamadaki 68 sorudan birini seçer, seçenekleri sesli okur, cevabını değerlendirir ve doğrusunu açıklar. “Bir tane daha sorayım mı?” sorusuna “evet” dersen devam eder.
 - **Plan:** “bugün ne çalışayım” dediğinde yaklaşan sınavı ve bekleyen ödevleri sıraya koyar.
@@ -54,11 +56,13 @@ Koç artık **hiçbir dış servise bağlanmıyor**. `1.8.0` ile Groq istemcisi,
 
 Nasıl “zeki” oluyor?
 
-1. **Bilgi bankası:** 115 kısa, doğru tanım (matematik, fen, Türkçe, sosyal, İngilizce, din).
-2. **Konu özetleri + 68 soru açıklaması:** toplam 233 kayıtlık arama dizini.
+1. **Bilgi bankası:** 143 kısa, doğru tanım (matematik, fen, Türkçe, sosyal, İngilizce, din).
+2. **Konu özetleri + 68 soru açıklaması:** toplam 261 kayıtlık arama dizini.
 3. **Türkçe kök eşleştirme:** ekler (EBOB/EBOB’u, hücre/hücrenin) aynı köke indirgenir; nadir kelimeler zorunlu, genel kelimeler ağırlıklı sayılır.
 4. **Hesap makinesi:** dört işlem, yüzde ve üs gerçekten hesaplanır.
-5. **Bağlam:** ödevler, teslim tarihleri ve sınav takvimi her cevaba katılır.
+5. **Birim çevirici:** “3 km kaç m”, “1 saat kaç dakika”, “500 g kaç kg” gibi soruları hesaplar.
+6. **Mini sözlük:** 61 İngilizce kelime; “apple ne demek”, “kitap ingilizce ne demek” gibi soruları iki yönde yanıtlar.
+7. **Bağlam:** ödevler, teslim tarihleri ve sınav takvimi her cevaba katılır; “anlamadım” dersen son cevabı kısaca tekrar eder.
 
 Ders dışı bir soruya uydurma cevap vermez: eşleşme yoksa “bunu notlarımdan çıkaramadım” der ve konuyu sorar.
 
