@@ -25,6 +25,12 @@ for(let i=1;i<12;i++){await page.locator('[data-action="answer"][data-id="0"]').
 assert.match(await page.locator('.result-score').innerText(),/3\s*\/\s*12/);assert.equal(await page.locator('.review-item').count(),9);
 await page.locator('[data-action="quit-quiz"]').click();await page.locator('.settings-link').click();await page.waitForSelector('#reminder-toggle',{state:'attached'});await page.locator('#quiet-toggle + span').click();await page.locator('#quiet-start').fill('21:30');await page.locator('#quiet-start').dispatchEvent('change');assert.equal(await page.locator('[data-action="test-voice"]').count(),1,'ses deneme düğmesi yok');await page.reload();assert.equal(await page.locator('#quiet-start').inputValue(),'21:30');
 await page.locator('.exam-toggle[data-id="din-1311"] + span').click();await page.reload();assert(!(await page.locator('.exam-toggle[data-id="din-1311"]').isChecked()));await page.locator('.exam-toggle[data-id="din-1311"] + span').click();
+await page.locator('.settings-link').click();await page.waitForSelector('#exam-text');
+await page.locator('#exam-text').fill('Fen Bilimleri 03.11.2026 2. ders\nMüzik 20.11.2026 3. ders\nResim 21.11.2026 2. ders');
+await page.locator('[data-action="analyze-schedule"]').click();await page.waitForSelector('.import-item');
+assert.equal(await page.locator('.import-item').count(),2,'geçmiş tarih atlanmalı, iki yeni sınav bulunmalı');
+await page.locator('[data-action="import-schedule"]').click();await page.waitForSelector('.calendar-grid');
+assert.match(await page.locator('.day-detail-title + .exam-list').innerText(),/Müzik/);
 await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:3000/#bugun');await page.waitForSelector('.hero');await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:'test-results/mobile.png',fullPage:true});
 assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'mobile horizontal overflow');
 for(const p of ['takvim','kamp','kutuphane','testler','ayarlar','bulut','aiko']){await page.goto('http://127.0.0.1:3000/#'+p);await page.waitForTimeout(100);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'overflow '+p);}

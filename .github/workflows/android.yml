@@ -95,8 +95,8 @@ jobs:
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/voice/(intro|who|saved)\.mp3'
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(voice/ring\.wav|kb\.js)'
           sha256sum artifacts/Sinav-Kampi.apk | tee apk-sha256.txt
-          if gh release view v1.8.2 >/dev/null 2>&1; then
-            gh release upload v1.8.2 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
+          if gh release view v1.9.0 >/dev/null 2>&1; then
+            gh release upload v1.9.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
           else
-            gh release create v1.8.2 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.8.2 — zil ve ses testi, kesintisiz medya" --notes "Ayarlar'a 'Zili ve sesi dene' düğmesi eklendi: önce zil sesini, sonra koçun sesini çalar; böylece telefonda sesin gerçekten çalıştığını tek dokunuşla doğrulayabilirsin. Android WebView artık kullanıcı hareketi beklemeden medya çalabiliyor, bu yüzden planlı aramalarda zil ve ses kesilmiyor. Yazma yok, Groq yok, her şey cihazda; bilgi bankası 143 madde. Ayrıntılar: AI-KOC.md."
+            gh release create v1.9.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.9.0 — sınav takvimi yükle, geçmiş sınav uyarısı düzeldi" --notes "Ayarlar'da 'Sınav takvimi yükle' kartı: okulunun sınav takvimi PDF'ini seç, kamp koçu tarihleri ve dersleri okuyup takvimine eklemeyi önersin. PDF taranmışsa metni yapıştırıp aynı analizi çalıştırabilirsin. Geçmiş sınavlar artık 'Geçti' olarak görünür ve bir daha 'yarın sınavın var' demez. Yazma yok, zil var, Groq yok; her şey cihazda. Ayrıntılar: AI-KOC.md."
           fi

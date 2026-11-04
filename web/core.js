@@ -11,11 +11,13 @@
  function upcoming(exams,date=today(),hidden=[]){return exams.filter(e=>!hidden.includes(e.id)&&daysBetween(date,e.date)>=0).sort((a,b)=>a.date.localeCompare(b.date)||a.period-b.period);}
  function countdown(e,date=today()){
   const n=daysBetween(date,e.date);
+  if(n<0)return 'Geçti';
   return n===0?'Bugün':n===1?'Yarın':`${n} gün sonra`;
  }
  function reminder(e,date=today()){
   if(!e)return 'Yaklaşan sınavın yok. Takvimini kontrol etmeyi unutma!';
   const n=daysBetween(date,e.date);
+  if(n<0)return 'Yaklaşan sınavın yok. Takvimini kontrol etmeyi unutma!';
   return `${n===0?'Bugün':n===1?'Yarın':n+' gün sonra'} ${e.name} sınavın var!`;
  }
  function makePlan(exams,date=today(),hidden=[]){

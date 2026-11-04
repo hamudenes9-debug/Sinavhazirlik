@@ -1,12 +1,12 @@
 {
   "name": "sinav-kampi",
-  "version": "1.8.2",
+  "version": "1.9.0",
   "private": true,
   "description": "6. sınıf kişisel sınav hazırlık uygulaması — çevrimdışı web ve Android",
   "scripts": {
     "build": "node scripts/build-web.mjs",
     "start": "node scripts/serve.mjs",
-    "test": "node --test tests/core.test.mjs tests/ai-core.test.mjs",
+    "test": "node --test tests/core.test.mjs tests/ai-core.test.mjs tests/exam-import.test.mjs",
     "android": "npm run build && ./gradlew assembleDebug",
     "test:rules": "firebase emulators:exec --only firestore --project demo-sinav-kampi \"node tests/firestore.test.mjs\"",
     "test:browser": "node tests/browser.mjs",

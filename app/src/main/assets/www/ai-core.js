@@ -705,6 +705,173 @@ function sanitizeSettings(obj){
   const rate=Number.isFinite(Number(o.rate))?Math.max(0.7,Math.min(1.4,Number(o.rate))):1.12;
   return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy,voice,rate,preferNetwork:o.preferNetwork!==false,voicePack:o.voicePack!==false};
 }
-const api={inSchoolDomain,knowledgeBrief,solveMath,evalExpression,math:fmtNum,speechText,isNotHomework,buildKnowledgeIndex,searchKnowledge,knowledgeAnswer,studyPlan,convertUnits,translateWord,classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
+
+/* ---------- Sınav takvimi okuyucu (PDF metni veya yapıştırılan metin) ---------- */
+const TR_MONTHS={ocak:1,subat:2,mart:3,nisan:4,mayis:5,haziran:6,temmuz:7,agustos:8,eylul:9,ekim:10,kasim:11,aralik:12};
+const TR_MONTH_ALT='(ocak|subat|mart|nisan|mayis|haziran|temmuz|agustos|eylul|ekim|kasim|aralik)';
+const EXAM_SUBJECTS=[
+  {id:'secingilizce',re:/secmeli\s*ingilizce/g},
+  {id:'ingilizce',re:/ingilizce/g},
+  {id:'matematik',re:/matematik/g},
+  {id:'turkce',re:/turkce/g},
+  {id:'fen',re:/fen(?:\s*bilimleri)?/g},
+  {id:'sosyal',re:/sosyal(?:\s*bilgiler)?/g},
+  {id:'tdb',re:/temel\s*dini/g},
+  {id:'din',re:/din(?:\s*kulturu)?/g},
+  {id:'kuran',re:/kuran/g},
+  {id:'siyer',re:/siyer|peygamber/g},
+  {id:'arapca',re:/arapca/g},
+  {id:'robotik',re:/robotik|kodlama/g}
+];
+function foldText(v){
+  return String(v??'')
+   .toLocaleLowerCase('tr-TR')
+   .replace(/[çÇ]/g,'c').replace(/[ğĞ]/g,'g').replace(/[ıİ]/g,'i')
+   .replace(/[öÖ]/g,'o').replace(/[şŞ]/g,'s').replace(/[üÜ]/g,'u')
+   .replace(/[âÂ]/g,'a').replace(/[îÎ]/g,'i')
+   .replace(/[\u0307]/g,'')
+   .replace(/\s+/g,' ').trim();
+}
+function pad2(n){return String(n).padStart(2,'0');}
+function validDate(y,m,d){
+  if(m<1||m>12||d<1||d>31)return null;
+  const dt=new Date(Date.UTC(y,m-1,d));
+  if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==m-1||dt.getUTCDate()!==d)return null;
+  return `${y}-${pad2(m)}-${pad2(d)}`;
+}
+function pickYear(hasYear,month,day,refYear,today){
+  if(hasYear)return refYear;
+  let y=refYear;
+  const iso=validDate(y,month,day);
+  if(iso&&today){
+    const back=Math.round((Date.parse(today+'T00:00:00Z')-Date.parse(iso+'T00:00:00Z'))/86400000);
+    if(back>45)y+=1;
+  }
+  return y;
+}
+function dateMatches(chunk,refYear,today){
+  const t=foldText(chunk);
+  const hits=[];
+  let m;
+  const re1=new RegExp('(\\d{1,2})\\s*'+TR_MONTH_ALT+'\\s*(\\d{4})?','g');
+  while((m=re1.exec(t))){
+    const d=Number(m[1]),mo=TR_MONTHS[m[2]],y=pickYear(!m[3],mo,d,refYear,today);
+    const iso=validDate(y,mo,d);
+    if(iso)hits.push({date:iso,index:m.index,end:re1.lastIndex});
+  }
+  const re2=/(\d{1,2})\s*[.\/-]\s*(\d{1,2})(?:\s*[.\/-]\s*(\d{2,4}))?/g;
+  while((m=re2.exec(t))){
+    let d=Number(m[1]),mo=Number(m[2]);
+    let y=m[3]?Number(m[3]):refYear;
+    if(m[3]&&y<100)y+=2000;
+    if(mo>12&&d<=12){const tmp=d;d=mo;mo=tmp;}
+    if(d<1||d>31||mo<1||mo>12)continue;
+    const y2=pickYear(Boolean(m[3]),mo,d,y,today);
+    const iso=validDate(y2,mo,d);
+    if(iso)hits.push({date:iso,index:m.index,end:re2.lastIndex});
+  }
+  const re3=new RegExp('(?:^|[^a-z])'+TR_MONTH_ALT+'\\s*(\\d{1,2})(?!\\d)(?:\\s*,?\\s*(\\d{4}))?','g');
+  while((m=re3.exec(t))){
+    const mo=TR_MONTHS[m[1]],d=Number(m[2]);
+    const y=pickYear(!m[3],mo,d,refYear,today);
+    const iso=validDate(y,mo,d);
+    if(iso)hits.push({date:iso,index:m.index,end:re3.lastIndex});
+  }
+  const merged=[];
+  for(const hit of hits.sort((a,b)=>a.index-b.index||a.end-b.end)){
+    if(merged.some(x=>x.date===hit.date&&Math.abs(x.index-hit.index)<3))continue;
+    merged.push(hit);
+  }
+  return merged;
+}
+function subjectNear(text,index){
+  const t=foldText(text);
+  let best=null;
+  for(const item of EXAM_SUBJECTS){
+    item.re.lastIndex=0;
+    let m;
+    while((m=item.re.exec(t))){
+      const start=m.index,dist=index-start;
+      if(dist<-25)continue;
+      const score=dist>=0?dist:100+Math.abs(dist);
+      if(!best||score<best.score)best={id:item.id,score};
+    }
+  }
+  return best?best.id:null;
+}
+function subjectInLine(text){
+  const t=foldText(text);
+  let found=null,bestIdx=Infinity;
+  for(const item of EXAM_SUBJECTS){
+    item.re.lastIndex=0;
+    const m=item.re.exec(t);
+    if(m&&m.index<bestIdx){bestIdx=m.index;found=item.id;}
+  }
+  return found;
+}
+function parsePeriod(text){
+  const m=/(\d{1,2})\s*\.\s*ders/.exec(foldText(text));
+  if(!m)return null;
+  const n=Number(m[1]);
+  return n>=1&&n<=10?n:null;
+}
+function parseExamSchedule(text,opts){
+  const raw=String(text||'');
+  if(raw.trim().length<4)return [];
+  const c=opts||{};
+  const today=c.today||istDate(Date.now());
+  const refYear=c.year||Number(today.slice(0,4));
+  const lines=raw.split(/\r?\n/).map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean);
+  const found=[];
+  const seen=new Set();
+  const add=(date,period,subject,source)=>{
+    if(!date)return;
+    const key=`${subject||'genel'}|${date}`;
+    if(seen.has(key))return;
+    seen.add(key);
+    let name='';
+    if(subject&&c.subjects&&c.subjects[subject])name=c.subjects[subject].name;
+    else if(subject)name=subject;
+    else{
+      const raw=String(source||'');
+      const cut=raw.search(/\d{1,2}\s*[.\/-]\s*\d{1,2}|\d{1,2}\s*(?:ocak|subat|mart|nisan|mayis|haziran|temmuz|agustos|eylul|ekim|kasim|aralik)/i);
+      name=(cut>0?raw.slice(0,cut):raw).replace(/[|:•·\-–—]+$/,'').replace(/\s+/g,' ').trim().slice(0,40)||'Sınav';
+    }
+    found.push({subject:subject||'custom',name,date,period:period||2,source:String(source||'').slice(0,120)});
+  };
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    const dates=dateMatches(line,refYear,today);
+    if(!dates.length)continue;
+    const period=parsePeriod(line);
+    for(const hit of dates){
+      let subject=subjectNear(line,hit.index);
+      if(!subject){
+        for(const gap of [1,-1,2,-2]){
+          const other=lines[i+gap];
+          if(!other)continue;
+          if(dateMatches(other,refYear,today).length)continue;
+          const s=subjectInLine(other);
+          if(s){subject=s;break;}
+        }
+      }
+      add(hit.date,period,subject,line);
+    }
+  }
+  if(!found.length){
+    const all=foldText(raw);
+    const loose=/(?:[^.;\n]{0,60})(?:\d{1,2}\s*[.\/-]\s*\d{1,2}(?:\s*[.\/-]\s*\d{2,4})?|\d{1,2}\s*(?:ocak|subat|mart|nisan|mayis|haziran|temmuz|agustos|eylul|ekim|kasim|aralik)\s*\d{0,4})(?:[^.;\n]{0,60})/g;
+    let m;
+    while((m=loose.exec(all))){
+      const chunk=m[0];
+      for(const hit of dateMatches(chunk,refYear,today)){
+        add(hit.date,parsePeriod(chunk),subjectNear(chunk,hit.index),chunk);
+      }
+    }
+  }
+  return found.sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+const api={parseExamSchedule,inSchoolDomain,knowledgeBrief,solveMath,evalExpression,math:fmtNum,speechText,isNotHomework,buildKnowledgeIndex,searchKnowledge,knowledgeAnswer,studyPlan,convertUnits,translateWord,classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,parseExamSchedule,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
 if(typeof module!=='undefined')module.exports=api;else root.KampAIcore=api;
 })(typeof window!=='undefined'?window:globalThis);

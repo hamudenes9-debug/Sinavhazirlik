@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.8.2** ile koç tamamen **cihazın içinde** çalışır: **143 maddelik 6. sınıf bilgi bankası**, **261 kayıtlık arama dizini**, gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq/API anahtarı tamamen kaldırıldı; hiçbir veri sunucuya gitmiyor.
+Sürüm **1.9.0** ile koç tamamen **cihazın içinde** çalışır: **143 maddelik 6. sınıf bilgi bankası**, **261 kayıtlık arama dizini**, gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq/API anahtarı tamamen kaldırıldı; hiçbir veri sunucuya gitmiyor.
 
 ## Akıllı davranış
 
@@ -65,6 +65,18 @@ Nasıl “zeki” oluyor?
 7. **Bağlam:** ödevler, teslim tarihleri ve sınav takvimi her cevaba katılır; “anlamadım” dersen son cevabı kısaca tekrar eder.
 
 Ders dışı bir soruya uydurma cevap vermez: eşleşme yoksa “bunu notlarımdan çıkaramadım” der ve konuyu sorar.
+
+## Sınav takvimi yükleme (Ayarlar)
+
+Okulunun sınav takvimi PDF’ini **Ayarlar → Sınav takvimi yükle** kartından seç. Koç PDF’teki tarihleri ve ders adlarını okur, geçmiş tarihleri atlar ve **onayından sonra** sınavları takvime ekler. PDF taranmışsa metni kopyalayıp kutuya yapıştırabilirsin; aynı analiz çalışır.
+
+- Tarih biçimleri: `03.11.2026`, `3/11`, `10 Kasım 2026`, `Kasım 10`.
+- Dersler: fen, matematik, Türkçe, sosyal, İngilizce, din, Arapça, Kur’an, siyer, TDB, robotik. Eşleşmeyen satır var olan adıyla eklenir.
+- Var olan sınavlar tekrar eklenmez; “zaten takviminde” olarak atlanır.
+
+## Geçmiş sınavlar
+
+Sınav tarihi geçtiğinde takvimde **“Geçti”** yazar, sayaç negatife düşmez ve “yarın sınavın var” bildirimi kurulmaz. Sıradaki sınav her zaman bugün veya sonrasıdır.
 
 ## Sesli arama: yazma yok, zil var
 

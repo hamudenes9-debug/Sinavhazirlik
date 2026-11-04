@@ -100,7 +100,9 @@ function nextExam() {
   try {
     const app = A();
     if (!app) return null;
-    const list = app.activeExams();
+    const list = app.activeExams()
+      .filter(e => app.C.daysBetween(app.C.today(), e.date) >= 0)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.period - b.period);
     if (!list.length) return null;
     const first = list[0];
     return { name: first.name, days: app.C.daysBetween(app.C.today(), first.date), date: first.date };
@@ -147,7 +149,7 @@ function renderPage() {
             <p>${settings.enabled ? `Okul çıkışında seni arayacak: ${schedule}.` : 'Çıkış saatini seç; her okul günü seni arasın.'}</p>
             <div class="call-card-meta">
               <span>${app.icon('check-square')} ${stats.pending ? `${stats.pending} ödev bekliyor` : 'Bekleyen ödev yok'}</span>
-              <span>${app.icon('calendar')} ${exam ? `${exam.name} ${exam.days === 0 ? 'bugün' : exam.days === 1 ? 'yarın' : exam.days + ' gün sonra'}` : 'Sınav yok'}</span>
+              <span>${app.icon('calendar')} ${exam ? `${exam.name} ${exam.days === 0 ? 'bugün' : exam.days === 1 ? 'yarın' : exam.days > 1 ? exam.days + ' gün sonra' : 'geçti'}` : 'Sınav yok'}</span>
             </div>
           </div>
         </div>
@@ -204,7 +206,7 @@ function renderPage() {
           <li><span>“12 × 8 kaç eder?”</span><small>Gerçekten hesaplar.</small></li>
           <li><span>“Bana soru sor”</span><small>Test sorusu sorar, cevabını değerlendirir.</small></li>
         </ul>
-        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.8.2.</p>
+        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.9.0.</p>
       </section>
 
       <section class="card card-padding">
@@ -224,7 +226,7 @@ function renderPage() {
           <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
           <button class="btn btn-white" data-ai="install-voice">Türkçe sesi indir</button>
         </div>
-        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.8.2.</p>
+        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.9.0.</p>
       </section>
 
       <section class="card card-padding">
