@@ -2,6 +2,7 @@ package tr.com.sinavkampi;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -122,7 +123,7 @@ public final class MainActivity extends Activity {
     }
     private static boolean online(Context c) {
         try {
-            ConnectivityManager manager = c.getSystemService(ConnectivityManager.class);
+            ConnectivityManager manager = (ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
             NetworkCapabilities caps = manager == null ? null : manager.getNetworkCapabilities(manager.getActiveNetwork());
             return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         } catch (Exception e) { return false; }
@@ -338,7 +339,7 @@ public final class MainActivity extends Activity {
                 speakNow(clean);
             });
         }
-        @JavascriptInterface public String voiceList() { runOnUiThread(this::initTts); return voicesJson(); }
+        @JavascriptInterface public String voiceList() { runOnUiThread(MainActivity.this::initTts); return voicesJson(); }
         @JavascriptInterface public void setVoiceConfig(String json) {
             try {
                 JSONObject data = new JSONObject(json == null ? "{}" : json);
@@ -347,7 +348,7 @@ public final class MainActivity extends Activity {
                 getSharedPreferences("sinav-kampi", MODE_PRIVATE).edit().putString("ttsVoice", voice).putFloat("ttsRate", Math.max(0.7f, Math.min(1.4f, rate))).apply();
                 voiceName = voice;
                 speechRate = Math.max(0.7f, Math.min(1.4f, rate));
-                runOnUiThread(this::applyVoicePreference);
+                runOnUiThread(MainActivity.this::applyVoicePreference);
             } catch (Exception ignored) { }
         }
         @JavascriptInterface public void previewVoice(String text) {
