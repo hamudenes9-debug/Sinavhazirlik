@@ -7,10 +7,10 @@ import AI from '../web/ai-core.js';
 
 function loadContent() {
   const sandbox = { window: {} };
-  for (const file of ['content.js', 'kb.js']) {
+  for (const file of ['content.js', 'kb.js', 'pdf-kb.js']) {
     vm.runInNewContext(fs.readFileSync(new URL('../web/' + file, import.meta.url), 'utf8'), sandbox);
   }
-  return { content: sandbox.window.KAMP_CONTENT || {}, kb: sandbox.window.KAMP_KB || [], words: sandbox.window.KAMP_WORDS || {} };
+  return { content: sandbox.window.KAMP_CONTENT || {}, kb: sandbox.window.KAMP_KB || [], words: sandbox.window.KAMP_WORDS || {}, pdfKb: sandbox.window.KAMP_PDF_KB || [] };
 }
 
 const subjects = {
@@ -295,4 +295,35 @@ test('units and a mini dictionary are answered in the call', () => {
 test('“anlamadım” asks for a simpler retelling', () => {
   assert.equal(AI.classifyUtterance('anlamadım', subjects), 'simplify');
   assert.match(AI.offlineAnswer('anlamadım', { subjects, homework, today: '2026-11-04' }), /basit/i);
+});
+
+test('PDF notes are part of the coach brain', () => {
+  const { content, kb, pdfKb } = loadContent();
+  assert.ok(pdfKb.length > 100, 'pdf parçaları: ' + pdfKb.length);
+  assert.ok(pdfKb.every(e => e.a && e.q && e.s && e.src.endsWith('.pdf')));
+  assert.ok(pdfKb.some(e => e.s === 'tdb' && /inanç esasları/i.test(e.a)));
+  assert.ok(pdfKb.every(e => e.a.length <= 220), 'parçalar konuşma için kısa olmalı');
+  const idx = AI.buildKnowledgeIndex({ subjects, quizzes: content.quizzes || {}, kb, pdfKb });
+  assert.ok(idx.filter(i => i.kind === 'pdf').length === pdfKb.length);
+  const ask = q => AI.offlineAnswer(q, { knowledge: idx, subjects, homework: [], today: '2026-11-04' });
+  assert.match(ask('Cebrail meleğinin görevi nedir'), /vahiy/);
+  assert.match(ask('sükûn neyi gösterir'), /hareke/i);
+  assert.match(ask('şedde nedir'), /iki kez/);
+  assert.match(ask('vakfe nedir'), /Arafat/);
+  assert.match(ask('bugün hava nasıl'), /çıkaramadım/);
+});
+
+test('Temel Dini Bilgiler content covers faith, worship and morals', () => {
+  const { content } = loadContent();
+  const data = fs.readFileSync(new URL('../web/data.js', import.meta.url), 'utf8');
+  assert.match(data, /İslam’ın şartları/);
+  const note = content.notes.tdb;
+  assert.ok(note, 'tdb notu yok');
+  assert.equal(note.sections.length, 6);
+  const text = note.sections.map(s => s[1]).join(' ');
+  for (const word of ['inanç esasları', 'kelime-i şehadet', 'abdest', 'imsak', 'nisap', 'vakfe', 'emanet']) {
+    assert.match(text, new RegExp(word, 'i'), 'eksik: ' + word);
+  }
+  assert.equal(content.quizzes.tdb.length, 10);
+  assert.match(data, /'Abdest ve namaz','Oruç ve Ramazan','Zekât, sadaka ve hac','Ahlak ve günlük hayat'/);
 });

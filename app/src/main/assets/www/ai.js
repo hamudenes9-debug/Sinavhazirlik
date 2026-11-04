@@ -205,8 +205,9 @@ function renderPage() {
           <li><span>“EBOB nasıl bulunur?”</span><small>Bilgi bankasından örnekli yanıt.</small></li>
           <li><span>“12 × 8 kaç eder?”</span><small>Gerçekten hesaplar.</small></li>
           <li><span>“Bana soru sor”</span><small>Test sorusu sorar, cevabını değerlendirir.</small></li>
+          <li><span>“Cebrail’in görevi ne?”</span><small>PDF konu özetlerinden yanıtlar (${(window.KAMP_PDF_KB || []).length} not parçası).</small></li>
         </ul>
-        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.9.0.</p>
+        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.10.0.</p>
       </section>
 
       <section class="card card-padding">
@@ -226,7 +227,7 @@ function renderPage() {
           <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
           <button class="btn btn-white" data-ai="install-voice">Türkçe sesi indir</button>
         </div>
-        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.9.0.</p>
+        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.10.0.</p>
       </section>
 
       <section class="card card-padding">
@@ -700,7 +701,7 @@ async function handleUser(text) {
 
 function knowledgeIndex() {
   if (knowledgeCache) return knowledgeCache;
-  try { knowledgeCache = AIC.buildKnowledgeIndex({ subjects: subjects(), quizzes: (window.KAMP_CONTENT || {}).quizzes || {}, kb: window.KAMP_KB || [] }); }
+  try { knowledgeCache = AIC.buildKnowledgeIndex({ subjects: subjects(), quizzes: (window.KAMP_CONTENT || {}).quizzes || {}, kb: window.KAMP_KB || [], pdfKb: window.KAMP_PDF_KB || [] }); }
   catch { knowledgeCache = []; }
   return knowledgeCache;
 }
@@ -721,7 +722,7 @@ async function answerChat(text, intent) {
 
 function knowledgeIndex() {
   if (knowledgeCache) return knowledgeCache;
-  try { knowledgeCache = AIC.buildKnowledgeIndex({ subjects: subjects(), quizzes: (window.KAMP_CONTENT || {}).quizzes || {}, kb: window.KAMP_KB || [] }); }
+  try { knowledgeCache = AIC.buildKnowledgeIndex({ subjects: subjects(), quizzes: (window.KAMP_CONTENT || {}).quizzes || {}, kb: window.KAMP_KB || [], pdfKb: window.KAMP_PDF_KB || [] }); }
   catch { knowledgeCache = []; }
   return knowledgeCache;
 }

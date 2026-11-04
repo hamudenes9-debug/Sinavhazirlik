@@ -132,6 +132,7 @@
    .replace(/[çÇ]/g,'c').replace(/[ğĞ]/g,'g').replace(/[ıİ]/g,'i')
    .replace(/[öÖ]/g,'o').replace(/[şŞ]/g,'s').replace(/[üÜ]/g,'u')
    .replace(/[âÂ]/g,'a').replace(/[îÎ]/g,'i')
+   .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
    .replace(/[^a-z0-9 ]+/g,' ')
    .replace(/\s+/g,' ').trim();
  }
@@ -579,7 +580,14 @@ function buildKnowledgeIndex(content){
     if(!item||!item.a)continue;
     const s2=(subjects[item.s]&&subjects[item.s].name)||item.s||'';
     const text=`${item.q||''} ${item.k||''} ${s2}`;
-    index.push({subject:item.s||'',kind:'kb',weight:1.7,text:item.a,tokens:norm(text),stems:stems(text),qNorm:norm(item.q||'')});
+    index.push({subject:item.s||'',kind:'kb',weight:1.7,text:item.a,tokens:norm(text),stems:stems(text),qStems:stems(item.q||''),qNorm:norm(item.q||'')});
+  }
+  const pdfKb=(content&&content.pdfKb)||(typeof root!=='undefined'&&root.KAMP_PDF_KB)||[];
+  for(const item of pdfKb){
+    if(!item||!item.a)continue;
+    const s3=(subjects[item.s]&&subjects[item.s].name)||item.s||'';
+    const text=`${item.q||''} ${s3}`;
+    index.push({subject:item.s||'',kind:'pdf',weight:1.35,text:item.a,tokens:norm(text),stems:stems(`${text} ${item.a}`),qStems:stems(item.q||''),qNorm:norm(item.q||'')});
   }
   const quizzes=(content&&content.quizzes)||{};
   for(const [subject,list] of Object.entries(quizzes)){
@@ -594,10 +602,19 @@ function buildKnowledgeIndex(content){
   }
   return index;
 }
-const SCHOOL_TERMS=['ebob','ekok','asal','carpan','kat','bolunebilme','bolme','kalansiz','olasilik','ondalik','kesir','yuzde','oran','uslu','karekok','cebir','denklem','kultur','kitalar','okyanus','toplum','grup','rol','sosyal','paragraf','anlam','sozcuk','yazim','noktalama','fiil','cumle','metin','greeting','present','routine','ingilizce','kelime','gramer','kuvvet','hareket','sindirim','destek','hucre','canli','din','ibadet','ahlak','peygamber','kuran'];
-const STOPWORDS=['bir','ve','ile','icin','gibi','ama','fakat','cok','daha','nedir','ne','mi','mu','misin','misiniz','nasil','neden','nicin','hangi','bu','su','o','da','de','ki','olarak','olan','olur','midir'];
+const SCHOOL_TERMS=['ebob','ekok','asal','carpan','kat','bolunebilme','bolme','kalansiz','olasilik','ondalik','kesir','yuzde','oran','uslu','karekok','cebir','denklem','kultur','kitalar','okyanus','toplum','grup','rol','sosyal','paragraf','anlam','sozcuk','yazim','noktalama','fiil','cumle','metin','greeting','present','routine','ingilizce','kelime','gramer','kuvvet','hareket','sindirim','destek','hucre','canli','din','ibadet','ahlak','peygamber','kuran','melek','cebrail','vahiy','şedde','sukun','hareke','tecvid','sure','ayet','namaz','abdest','oruc','zekat','hac','iman','cami','ezan','ramazan','bayram','kurban','sadaka','nisap','vakfe','ihram','tavaf','kabe','kadir','teravih','fitre','fidye','sahur','iftar','imsak','helal','haram','sevap','gunah','dua','hadis','sünnet','siret','siyer','arapca','tdb','dini'];
+const STOPWORDS=['bir','ve','ile','icin','gibi','ama','fakat','cok','daha','nedir','ne','mi','mu','misin','misiniz','nasil','neden','nicin','hangi','bu','su','o','da','de','ki','olarak','olan','olur','midir','neyi','neler','hang','nered','kimdi','kacti','kac','neye','nere','nasil'];
 function stems(text){
-  return norm(text).split(' ').filter(w=>w.length>=4||/^\d+$/.test(w)).map(w=>w.slice(0,5));
+  const out=[];
+  for(const w of norm(text).split(' ')){
+    if(!(w.length>=4||/^\d+$/.test(w)))continue;
+    const stem=w.slice(0,5);
+    out.push(stem);
+    const last=stem.slice(-1);
+    const soft={'g':'k','b':'p','d':'t','c':'c'}[last];
+    if(soft&&!out.includes(stem.slice(0,-1)+soft))out.push(stem.slice(0,-1)+soft);
+  }
+  return out;
 }
 function inSchoolDomain(text){
   const n=norm(text);
@@ -617,10 +634,12 @@ function searchKnowledge(text,index,limit){
       if(stemsArr.includes(stem)){matched++;raw+=df[stem]<=5?2.2:df[stem]<=12?1.6:1.2;}
     }
     if(item.qNorm&&item.qNorm===norm(text))raw+=1.4;
+    if(Array.isArray(item.qStems))for(const stem of query){if(item.qStems.includes(stem))raw+=1.1;}
     const covers=matched/query.length>=need;
-    const rareOk=rare.every(stem=>stemsArr.includes(stem));
-    return {item,raw,score:raw*(item.weight||1),ok:covers&&rareOk&&raw>=(query.length===1?1.2:1.6)};
-  }).filter(x=>x.ok).sort((a,b)=>b.score-a.score);
+    const rareHit=rare.filter(stem=>stemsArr.includes(stem)).length;
+    const rareOk=rareHit===rare.length||(query.length>=3&&rareHit>=Math.max(1,rare.length-1)&&matched>=2);
+    return {item,raw,rareHit,score:raw*(item.weight||1)*(1+0.4*(matched/query.length)),ok:covers&&rareOk&&raw>=(query.length===1?1.2:1.6)};
+  }).filter(x=>x.ok).sort((a,b)=>b.rareHit-a.rareHit||b.score-a.score);
   const seen=new Set(),out=[];
   for(const {item,score} of scored){
     const key=item.text.slice(0,60);
@@ -638,10 +657,11 @@ function knowledgeAnswer(text,ctx){
   /* Yalnızca ders/okul konularına cevap ver; havadan sudan sorulara uydurma cevap yok.
      Bilgi bankası zaten ders içeriği olduğu için güçlü bir bilgi bankası eşleşmesi de yeterli. */
   const school=inSchoolDomain(text)||matchSubject(text,c.subjects);
-  if(!school&&hits[0].kind!=='kb')return null;
+  if(!school&&hits[0].kind!=='kb'&&hits[0].kind!=='pdf')return null;
   const first=hits[0].text;
   if(hits[0].kind==='topic')return `${first} İstersen kısa bir örnek çözebiliriz.`;
   if(hits[0].kind==='kb')return first;
+  if(hits[0].kind==='pdf')return `PDF notlarımda şöyle geçiyor: ${first}`;
   const intro=hits[0].kind==='quiz'?'Bunu bir örnekle açıklayayım: ':'Bunu biliyorum: ';
   if(hits.length>1&&hits[1].kind==='quiz'&&hits[1].score>=hits[0].score*0.85&&first.length+hits[1].text.length<240)
     return `${intro}${first} Bir de şu örnek var: ${hits[1].text}`;

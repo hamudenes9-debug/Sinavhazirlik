@@ -309,7 +309,31 @@ window.KAMP_KB = [
   { s: 'din', k: 'namaz vakitleri bes vakit', q: 'namaz vakitleri nelerdir',
     a: 'Günlük beş vakit namaz: sabah (imsak), öğle, ikindi, akşam ve yatsı. Cuma günü öğle vakti cuma namazı kılınır. Namaz öncesi abdest alınır.' },
   { s: 'din', k: 'cami bolumleri mihrap minber', q: 'caminin bölümleri nelerdir',
-    a: 'Camide mihrap (imamın durduğu yer), minber (hutbe okunan yer), şadırvan (abdest alınan yer), minare (ezan okunan kule) ve kürsü bulunur.' }
+    a: 'Camide mihrap (imamın durduğu yer), minber (hutbe okunan yer), şadırvan (abdest alınan yer), minare (ezan okunan kule) ve kürsü bulunur.' },
+
+  /* ---------- Temel Dini Bilgiler ---------- */
+  { s: 'tdb', k: 'imanin sartlari inanc esaslari alti', q: 'inanç esasları nelerdir',
+    a: 'İslam’ın inanç esasları altı tanedir: Allah’a, meleklere, kitaplara, peygamberlere, ahiret gününe, kaza ve kadere inanmak.' },
+  { s: 'tdb', k: 'islamin sartlari bes sart', q: 'İslam’ın şartları nelerdir',
+    a: 'İslam’ın beş şartı: kelime-i şehadet getirmek, namaz kılmak, oruç tutmak, zekât vermek ve gücü yetenler için hacca gitmek.' },
+  { s: 'tdb', k: 'cebrail melek vahiy', q: 'Cebrail meleğinin görevi nedir',
+    a: 'Cebrail, peygamberlere vahiy getirmekle görevli melektir. Melekler nurdan yaratılmış, gözle görülmeyen varlıklardır.' },
+  { s: 'tdb', k: 'zekat kimlere verilir fakir yoksul', q: 'zekât kimlere verilir',
+    a: 'Zekât; fakirlere, yoksullara, borçlulara ve yolda kalmışlara verilir. Anne, baba ve çocuklara zekât verilmez.' },
+  { s: 'tdb', k: 'nisap zekat orani kirkta bir', q: 'nisap nedir',
+    a: 'Nisap, zekât vermek için gereken en az mal miktarıdır. Nakit ve ticaret malında zekât kırkta bir, yani yüzde 2,5’tir.' },
+  { s: 'tdb', k: 'sahur imsak iftar oruc', q: 'sahur ve iftar nedir',
+    a: 'Sahur, imsaktan önce yenen yemektir. İmsak tan yerinin ağarması, iftar ise güneşin batmasıyla orucun açılmasıdır.' },
+  { s: 'tdb', k: 'abdest nasil alinir farz sira', q: 'abdest nasıl alınır',
+    a: 'Abdest; elleri yıkamak, ağza ve burna su vermek, yüzü yıkamak, kolları dirseklere kadar yıkamak, başı mesh etmek ve ayakları topuklarla yıkamakla alınır.' },
+  { s: 'tdb', k: 'namaz vakit bes vakit cuma', q: 'namaz vakitleri nelerdir',
+    a: 'Beş vakit namaz sabah, öğle, ikindi, akşam ve yatsıdır. Cuma günü öğle vakti cuma namazı kılınır.' },
+  { s: 'tdb', k: 'hac vakfe ihram tavaf say', q: 'hacda vakfe nedir',
+    a: 'Vakfe, hac sırasında Arafat’ta yapılan bekleme ve ibadettir. Hacda ayrıca ihrama girmek, tavaf etmek ve sa’y etmek vardır.' },
+  { s: 'tdb', k: 'kurban bayrami ramazan bayrami fitre', q: 'dini bayramlar ve fitre',
+    a: 'Ramazan Bayramı’nda fitre (zekât-ı fıtır) verilir ve bayram namazı kılınır. Kurban Bayramı’nda kurban kesilir; iki bayramda da büyükler ziyaret edilir.' },
+  { s: 'tdb', k: 'guzel ahlak emanet dogruluk komsu', q: 'güzel ahlak nedir',
+    a: 'Güzel ahlak; doğru sözlü olmak, emaneti korumak, adaletli davranmak, komşuyu gözetmek, israftan kaçınmak ve insanlara saygı göstermektir.' }
 ];
 window.KAMP_WORDS = {
   apple: 'elma', book: 'kitap', water: 'su', school: 'okul', teacher: 'öğretmen', student: 'öğrenci',
