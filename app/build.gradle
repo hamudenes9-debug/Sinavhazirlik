@@ -9,9 +9,19 @@ android {
         versionCode 9
         versionName '1.7.0'
     }
+    signingConfigs {
+        /* Sabit imza: yeni APK eskisinin üzerine kurulabilsin (CI'da üretilen rastgele debug anahtarı yerine). */
+        stable {
+            storeFile file('../keystore/sinav-kampi.p12')
+            storeType 'PKCS12'
+            storePassword 'sinavkampi'
+            keyAlias 'sinavkampi'
+            keyPassword 'sinavkampi'
+        }
+    }
     buildTypes {
-        debug { applicationIdSuffix ''; versionNameSuffix '' }
-        release { minifyEnabled false }
+        debug { applicationIdSuffix ''; versionNameSuffix ''; signingConfig signingConfigs.stable }
+        release { minifyEnabled false; signingConfig signingConfigs.stable }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     androidResources { noCompress 'mp3' }
