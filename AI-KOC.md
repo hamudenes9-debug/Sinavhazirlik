@@ -121,8 +121,8 @@ Mikrofon ve konuşma tanıma cihazda yoksa koç yine konuşur ve yazılı dökü
 ## Testler
 
 ```bash
-npm test                 # çekirdek + koç mantığı (42 test)
+npm test                 # çekirdek + koç mantığı + takvim okuyucu (51 test)
 npm run test:browser     # masaüstü/mobil, sesli arama, test sorusu, ödev ekleme
 ```
 
-Tarayıcı testi yazma alanının kaldırıldığını, zil sesinin yüklendiğini, “Sen kimsin?” sorusunun ödev olarak kaydedilmediğini ve “bana soru sor” test akışını doğrular.
+Tarayıcı testi yazma alanının kaldırıldığını, zil sesinin yüklendiğini, “Sen kimsin?” sorusunun ödev olarak kaydedilmediğini, “bana soru sor” test akışını ve **PDF/metin ile sınav takvimi ekleme** akışını doğrular.
