@@ -180,9 +180,32 @@
 
  /* Sesli cümleden ödevleri çıkarır: "matematik çalışma kağıdı, fen özeti ve
   * türkçe kitap okuma" → üç ödev. Teslim tarihi varsayılan: sonraki okul günü. */
- function parseHomeworkUtterance(text,subjects,today){
+ const QUESTION_STARTS=['kim','kimsin','nesin','ne','neden','nicin','nasil','nerede','nereye','hangi','kac','misin','misiniz','musun','muyum','mi','mu','misin','anlat','soyle','biliyor musun'];
+const HOMEWORK_HINTS=['odev','odevler','odevim','odevlerim','odevini','calisma kagidi','calisma','test','kitap','okuma','proje','sunum','arastir','arastirma','yaz','coz','sayfa','etkinlik','poster','maket','deneme','defter','fotokopi','kitapcik','ozet','rapor','soru','problem','alistirma','tekrar','ezber','sozluk','kelime','yazma','anlatim','cikar'];
+const IDENTITY_PATTERNS=['sen kimsin','kimsin','sen nesin','nesin sen','adin ne','ismin ne','sen bir robot','robot musun','yapay zeka misin','yapay zekamisin','gercek misin','insan misin','kac yasindasin','nerede yasiyorsun'];
+function isQuestionText(text){
+  const raw=String(text||'').trim();
+  if(!raw)return false;
+  if(/\?$/.test(raw))return true;
+  const n=norm(raw);
+  const first=n.split(' ')[0];
+  if(QUESTION_STARTS.includes(first))return true;
+  return /\b(misin|misiniz|musun|muyum|misiniz|mi|mu)\b/.test(n)&&n.split(' ').length<=6;
+}
+function looksLikeHomework(text){
+  const n=norm(text);
+  if(!n)return false;
+  if(/\b(cozduk|yaptik|bitirdik|tamamladik|vermediler|gelmedi)\b/.test(n))return false;
+  const words=n.split(' ');
+  if(HOMEWORK_HINTS.some(hint=>words.some(w=>w.length>=3&&(w===hint||(hint.length>=4&&w.startsWith(hint.slice(0,4))&&w.startsWith(hint))||(hint.length>=5&&w.startsWith(hint.slice(0,5)))))))return true;
+  /* Ders adı + fiil: "matematikten 20 soru çözdük" gibi cümleler ödevdir. */
+  return /\b(verdi|verildi|odedi|yapilacak|getir|getirin|bitirin|tamamlayin|hazirlayin)\b/.test(n);
+}
+function parseHomeworkUtterance(text,subjects,today){
   const raw=String(text||'').trim();
   if(!raw||noHomework(raw))return [];
+  /* Yalnızca gerçekten ödev listesi söylenmişse kaydet. */
+  if(classifyUtterance(raw,subjects)!=='homework')return [];
   const chunks=raw
    .replace(/[.!?]+/g,' ')
    .split(/\s*(?:,|;|\bve\b|\bile\b|\bsonra\b|\bayrıca\b|\bartı\b|\bdiğer\b|\bde\b|\bda\b)\s*/iu)
@@ -258,9 +281,11 @@ function describeExams(exams){
 function composeMessages(input){
   const c=input||{};
   const system=[
-   'Sen "Kamp Koçu"sun: 6. sınıf öğrencisine ödev ve sınav hazırlığında yardım eden, Türkçe konuşan sıcak bir koçsun.',
+   'Sen "Kamp Koçu"sun: 6. sınıf öğrencisiyle konuşan, Türkçe bilen, zeki ve sıcak bir yapay zekâ koçusun.',
    'Kurallar:',
    '- Sesli konuşuyorsun. En fazla 3 kısa cümle kur; madde işareti, emoji ve markdown kullanma.',
+   '- "Sen kimsin?", "ne yapabilirsin?", "nasılsın?" gibi sorulara doğal cevap ver; bunları ödev sanma.',
+   '- Ders, ödev ve genel bilgi sorularını 6. sınıf düzeyinde, doğru ve kısa yanıtla; bilmiyorsan bilmediğini söyle.',
    '- Yalnızca aşağıdaki verilere dayan; olmayan ödev, tarih veya not uydurma.',
    '- Ödev yardımı istenirse konuyu tek cümleyle hatırlat, sonra cevabı vermeden küçük bir ipucu ver.',
    '- Öğrenci bir ödevi bitirdiğini söylerse kısaca tebrik et ve sıradaki ödevi hatırlat.',
@@ -277,6 +302,30 @@ function composeMessages(input){
   messages.push({role:'user',content:String(c.userText||'').slice(0,1200)});
   return messages;
 }
+/* Kullanıcının ne söylediğini anlar: ödev mi, soru mu, teşekkür mü? */
+function classifyUtterance(text,subjects){
+  const raw=String(text||'').trim();
+  const n=norm(raw);
+  if(!raw)return 'chat';
+  if(IDENTITY_PATTERNS.some(p=>n.includes(p)))return 'identity';
+  if(hasWord(n,DONE_WORDS))return 'done';
+  if(hasWord(n,HELP_WORDS)&&(matchSubject(raw,subjects)||/odev|soru|konu/.test(n)))return 'help';
+  if(noHomework(raw))return 'no-homework';
+  if(/^(tesekkur|sagol|eyvallah|eline saglik|harika|super|tamam|peki|evet|hayir|ok)\b/.test(n))return 'ack';
+  if(['tesekkurler','tesekkur ederim','sagol','sag ol','eyvallah','harika','super','tamam','peki','evet','hayir','ok','anladim'].some(w=>n===w||n.startsWith(w+' ')))return 'ack';
+  if(isGreeting(raw))return 'greeting';
+  if(isQuestionText(raw)&&!hasWord(n,['odev','odevler','odevim','calisma','kitap','proje','sunum','sayfa','test']))return 'question';
+  if(looksLikeHomework(raw))return 'homework';
+  return 'chat';
+}
+
+/* "Sen kimsin?" gibi sorulara kısa, dürüst yanıt. */
+function identityAnswer(ctx){
+  const c=ctx||{},pending=pendingHomework(c.homework).length;
+  const who=c.name?`${c.name}, ben Kamp Koçu’yum.`:'Ben Kamp Koçu’yum.';
+  return `${who} Ödevlerini ve sınavlarını takip eden, seninle konuşan bir yapay zekâ koçuyum. ${pending?`Şu an ${pending} ödevin bekliyor.`:'Şu an bekleyen ödevin yok.'} Bugün hangi ödevleri verdiler?`;
+}
+
 function subjectTip(subjects,id){
   const s=id&&subjects&&subjects[id];
   if(!s)return '';
@@ -285,6 +334,11 @@ function subjectTip(subjects,id){
 }
 function offlineAnswer(text,ctx){
   const c=ctx||{},subjects=c.subjects||{},today=c.today||'';
+  const intent=classifyUtterance(text,subjects);
+  if(intent==='identity')return identityAnswer(c);
+  if(intent==='ack')return pendingHomework(c.homework).length?`Tamam! Sırada ${pendingHomework(c.homework)[0].title} var. Başlayalım mı?`:'Tamam! Bir şey olursa buradayım.';
+  if(intent==='greeting')return `${c.name?c.name+', ':''}merhaba! Bugünkü ödevleri konuşalım mı?`;
+  if(intent==='question'&&/sinav/.test(norm(text))&&c.exam)return `Sıradaki sınavın ${c.exam.name}. ${c.exam.days===0?'Bugün':c.exam.days===1?'Yarın':c.exam.days+' gün sonra'}.`;
   const subjectId=matchSubject(text,subjects);
   if(wantsHelp(text)&&subjectId){
    return `${subjectTip(subjects,subjectId)} Takıldığın soruyu bana yazarsan birlikte adım adım bakarız.`;
@@ -318,6 +372,38 @@ function explainAiError(err){
   if(raw.includes('offline')||raw.includes('failed to fetch')||raw.includes('network')||raw.includes('load failed'))return 'Groq’a ulaşılamadı. İnternet bağlantısını kontrol et; APK sürümünde bağlantı doğrudan Android üzerinden yapılır.';
   return 'Groq bağlantısı kurulamadı. İnterneti kontrol edip tekrar dene.';
 }
+/* Groq'a ödev çıkarımı yaptırmak için mesajlar (JSON yanıt). */
+function composeHomeworkExtraction(text,subjects,today){
+  const list=Object.entries(subjects||{}).map(([id,s])=>`${id}: ${s.name}`).join(', ');
+  return [
+   {role:'system',content:[
+    'Öğrencinin cümlesinden VERİLEN ÖDEVLERİ çıkarırsın. Yalnızca JSON döndür.',
+    'Biçim: {"items":[{"subject":"ders-id","title":"kısa ödev başlığı"}],"none":false}',
+    `Geçerli ders id’leri: ${list}, diger`,
+    'Kural: cümle bir soru, selamlama veya sohbet ise {"items":[],"none":true} döndür.',
+    'Ödev yoksa none true. Başlığı 6 kelimeyi geçmeyecek şekilde öğrencinin dediği gibi yaz.',
+    `Bugün: ${formatDateTR(today,true)}.`
+   ].join('\n')},
+   {role:'user',content:String(text||'').slice(0,400)}
+  ];
+}
+function parseIntakeResult(raw,subjects,today){
+  let data=null;
+  try{data=typeof raw==='string'?JSON.parse(raw):raw;}catch{return null;}
+  if(!data||typeof data!=='object')return null;
+  if(data.none===true)return [];
+  const items=Array.isArray(data.items)?data.items:[];
+  const due=nextSchoolDay(today||istDate(Date.now()));
+  const out=[];
+  for(const item of items.slice(0,5)){
+   if(!item||typeof item.title!=='string')continue;
+   const title=item.title.trim().slice(0,120);
+   if(title.length<2)continue;
+   const subject=subjects&&subjects[item.subject]?item.subject:(matchSubject(title,subjects)||'diger');
+   out.push({subject,title:title.charAt(0).toLocaleUpperCase('tr-TR')+title.slice(1),due});
+  }
+  return out;
+}
 function validateHomeworkItem(item){
   if(!item||typeof item!=='object')return false;
   if(typeof item.id!=='string'||!/^hw-[a-zA-Z0-9-]{1,60}$/.test(item.id))return false;
@@ -337,8 +423,10 @@ function sanitizeSettings(obj){
   const key=typeof o.key==='string'&&o.key.length<=300?o.key.trim():'';
   const proxy=typeof o.proxy==='string'&&/^https:\/\/[^\s]+$/.test(o.proxy)?o.proxy:'';
   const name=typeof o.name==='string'?o.name.trim().replace(/\s+/g,' ').slice(0,24):'';
-  return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy};
+  const voice=typeof o.voice==='string'&&o.voice.length<=120?o.voice:'';
+  const rate=Number.isFinite(Number(o.rate))?Math.max(0.7,Math.min(1.4,Number(o.rate))):1.12;
+  return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy,voice,rate};
 }
-const api={explainAiError,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
+const api={classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,explainAiError,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
 if(typeof module!=='undefined')module.exports=api;else root.KampAIcore=api;
 })(typeof window!=='undefined'?window:globalThis);

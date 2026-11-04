@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
@@ -25,6 +27,7 @@ import androidx.webkit.WebViewAssetLoader;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 import androidx.core.content.FileProvider;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -42,6 +45,9 @@ public final class MainActivity extends Activity {
     private boolean ttsReady;
     private boolean ttsFailed;
     private String pendingSpeech;
+    private String voiceName;
+    private float speechRate = 1.12f;
+    private boolean voiceReady;
     private SpeechRecognizer recognizer;
     private boolean pageReady;
     private boolean pendingAiCall;
@@ -111,9 +117,52 @@ public final class MainActivity extends Activity {
         web.postDelayed(() -> web.evaluateJavascript("window.KampAI&&window.KampAI.openFromNotification(" + JSONObject.quote(kind) + ")", null), 700);
     }
     private void js(String script) { if (web != null) web.post(() -> web.evaluateJavascript(script, null)); }
+    private boolean googleTtsInstalled() {
+        try { getPackageManager().getPackageInfo("com.google.android.tts", 0); return true; } catch (Exception e) { return false; }
+    }
+    private static boolean online(Context c) {
+        try {
+            ConnectivityManager manager = c.getSystemService(ConnectivityManager.class);
+            NetworkCapabilities caps = manager == null ? null : manager.getNetworkCapabilities(manager.getActiveNetwork());
+            return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        } catch (Exception e) { return false; }
+    }
+    private void applyVoicePreference() {
+        if (tts == null || !ttsReady) return;
+        String saved = getSharedPreferences("sinav-kampi", MODE_PRIVATE).getString("ttsVoice", "");
+        float rate = getSharedPreferences("sinav-kampi", MODE_PRIVATE).getFloat("ttsRate", 1.12f);
+        speechRate = Math.max(0.7f, Math.min(1.4f, rate));
+        try {
+            tts.setSpeechRate(speechRate);
+            tts.setPitch(1.0f);
+        } catch (Exception ignored) { }
+        Voice chosen = null;
+        try {
+            for (Voice voice : tts.getVoices()) {
+                if (!"tr".equals(voice.getLocale().getLanguage())) continue;
+                if (!saved.isEmpty() && saved.equals(voice.getName())) { chosen = voice; break; }
+                if (chosen == null) chosen = voice;
+                boolean better = voice.getQuality() > chosen.getQuality();
+                boolean sameQualityButOnline = voice.getQuality() == chosen.getQuality() && voice.isNetworkConnectionRequired() == online(this) && !chosen.isNetworkConnectionRequired();
+                if ((better || sameQualityButOnline) && (!voice.isNetworkConnectionRequired() || online(this))) chosen = voice;
+            }
+        } catch (Exception ignored) { }
+        if (chosen != null) {
+            try { tts.setVoice(chosen); voiceName = chosen.getName(); voiceReady = true; } catch (Exception ignored) { }
+        }
+    }
     private void initTts() {
         if (tts != null || ttsFailed) return;
-        tts = new TextToSpeech(this, status -> {
+        tts = googleTtsInstalled()
+                ? new TextToSpeech(this, status -> onTtsReady(status), "com.google.android.tts")
+                : new TextToSpeech(this, status -> onTtsReady(status));
+        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override public void onStart(String id) { }
+            @Override public void onDone(String id) { js("window.KampAI&&window.KampAI._speakDone()"); }
+            @Override public void onError(String id) { js("window.KampAI&&window.KampAI._speakDone()"); }
+        });
+    }
+    private void onTtsReady(int status) {
             if (status == TextToSpeech.SUCCESS) {
                 int result = tts.setLanguage(Locale.forLanguageTag("tr-TR"));
                 ttsReady = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED;
@@ -122,19 +171,7 @@ public final class MainActivity extends Activity {
                     ttsReady = fallback != TextToSpeech.LANG_MISSING_DATA && fallback != TextToSpeech.LANG_NOT_SUPPORTED;
                 }
             }
-            if (ttsReady) {
-                try {
-                    tts.setSpeechRate(1.12f);
-                    tts.setPitch(1.0f);
-                    Voice best = null;
-                    for (Voice voice : tts.getVoices()) {
-                        if (!"tr".equals(voice.getLocale().getLanguage())) continue;
-                        if (voice.isNetworkConnectionRequired()) continue; // çevrimdışı ve hızlı ses
-                        if (best == null || voice.getQuality() > best.getQuality()) best = voice;
-                    }
-                    if (best != null) tts.setVoice(best);
-                } catch (Exception ignored) { }
-            }
+            if (ttsReady) applyVoicePreference();
             if (!ttsReady) {
                 ttsFailed = true;
                 pendingSpeech = null;
@@ -142,15 +179,35 @@ public final class MainActivity extends Activity {
                 return;
             }
             if (pendingSpeech != null) {
-                tts.speak(pendingSpeech, TextToSpeech.QUEUE_FLUSH, null, "ai-" + System.currentTimeMillis());
+                speakNow(pendingSpeech);
                 pendingSpeech = null;
             }
-        });
-        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-            @Override public void onStart(String id) { }
-            @Override public void onDone(String id) { js("window.KampAI&&window.KampAI._speakDone()"); }
-            @Override public void onError(String id) { js("window.KampAI&&window.KampAI._speakDone()"); }
-        });
+    }
+    private void speakNow(String text) {
+        if (tts == null || !ttsReady) return;
+        try {
+            tts.setSpeechRate(speechRate);
+            if (voiceName != null && !voiceName.isEmpty()) {
+                for (Voice voice : tts.getVoices()) if (voiceName.equals(voice.getName())) { tts.setVoice(voice); break; }
+            }
+        } catch (Exception ignored) { }
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ai-" + System.currentTimeMillis());
+    }
+    private String voicesJson() {
+        JSONArray list = new JSONArray();
+        if (tts != null) {
+            try {
+                for (Voice voice : tts.getVoices()) {
+                    if (!"tr".equals(voice.getLocale().getLanguage())) continue;
+                    list.put(new JSONObject()
+                            .put("name", voice.getName())
+                            .put("quality", voice.getQuality())
+                            .put("network", voice.isNetworkConnectionRequired())
+                            .put("label", (voice.isNetworkConnectionRequired() ? "İnternetli" : "Çevrimdışı") + " · kalite " + voice.getQuality()));
+                }
+            } catch (Exception ignored) { }
+        }
+        return list.toString();
     }
     private void releaseRecognizer(boolean cancel) {
         if (recognizer == null) return;
@@ -278,9 +335,28 @@ public final class MainActivity extends Activity {
                 if (ttsFailed) { js("window.KampAI&&window.KampAI._speakUnavailable()"); return; }
                 if (!ttsReady) { pendingSpeech = clean; initTts(); return; }
                 tts.stop();
-                int result = tts.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "ai-" + System.currentTimeMillis());
-                if (result == TextToSpeech.ERROR) js("window.KampAI&&window.KampAI._speakDone()");
+                speakNow(clean);
             });
+        }
+        @JavascriptInterface public String voiceList() { runOnUiThread(this::initTts); return voicesJson(); }
+        @JavascriptInterface public void setVoiceConfig(String json) {
+            try {
+                JSONObject data = new JSONObject(json == null ? "{}" : json);
+                String voice = data.optString("voice", "");
+                float rate = (float) data.optDouble("rate", 1.12);
+                getSharedPreferences("sinav-kampi", MODE_PRIVATE).edit().putString("ttsVoice", voice).putFloat("ttsRate", Math.max(0.7f, Math.min(1.4f, rate))).apply();
+                voiceName = voice;
+                speechRate = Math.max(0.7f, Math.min(1.4f, rate));
+                runOnUiThread(this::applyVoicePreference);
+            } catch (Exception ignored) { }
+        }
+        @JavascriptInterface public void previewVoice(String text) {
+            final String sample = text == null || text.isEmpty() ? "Merhaba! Ben Kamp Koçu. Bugün hangi ödevleri verdiler?" : text;
+            runOnUiThread(() -> { if (ttsReady) { tts.stop(); speakNow(sample); } else { pendingSpeech = sample; initTts(); } });
+        }
+        @JavascriptInterface public void openTtsSettings() {
+            try { startActivity(new Intent("com.android.settings.TTS_SETTINGS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+            catch (Exception e) { openAppSettings(); }
         }
         @JavascriptInterface public void stopVoice() { runOnUiThread(() -> { if (tts != null) tts.stop(); stopListening(); }); }
         @JavascriptInterface public void stopListening() { runOnUiThread(MainActivity.this::stopListening); }

@@ -91,8 +91,8 @@ jobs:
           unzip -t artifacts/Sinav-Kampi.apk
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(firebase.js|cloud-ui.js|index.html)'
           sha256sum artifacts/Sinav-Kampi.apk | tee apk-sha256.txt
-          if gh release view v1.5.0 >/dev/null 2>&1; then
-            gh release upload v1.5.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
+          if gh release view v1.6.0 >/dev/null 2>&1; then
+            gh release upload v1.6.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
           else
-            gh release create v1.5.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.5.0 — Groq bağlantısı düzeltildi" --notes "Groq bağlantısı artık APK içinde doğrudan çalışır: istek WebView yerine Android tarafından gönderilir, \"internet yok\" hatası yerine gerçek sebep gösterilir ve \"Bağlantıyı test et\" düğmesi sonucu yazar. Konuşma sesi daha hızlı ve cihazın en iyi Türkçe sesi seçilir. Günlük çıkış saatlerine göre arayan Kamp Koçu: Pazartesi 16:00, diğer günler 15:10 gibi. Aradığında bugün hangi ödevleri verdiklerini sorar, dersleriyle birlikte kaydeder ve teslimden bir gün önce \"ödevin var, unutma\" diye arar. Sesli sohbet, isimle hitap, çevrimdışı ödev özeti ve isteğe bağlı Groq desteği. Ortak sınav takvimi, Google/GitHub ve e-posta/şifre girişi, isteğe bağlı bulut eşitleme korunur. Uygulama içinde Firebase bağlantı ayarı yoktur. Groq anahtarı depoya yazılmaz (GitHub push koruması engelliyor); uygulamada bir kez girilir veya GROQ_API_KEY deposu sırrıyla derlemeye eklenir. APK debug imzalıdır. Ayrıntılar: AI-KOC.md ve FIREBASE.md."
+            gh release create v1.6.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.6.0 — Akıllı koç ve seçilebilir ses" --notes "Kamp Koçu artık soruları ödev sanmıyor: “Sen kimsin?” gibi sorulara cevap veriyor, ödevleri yalnızca gerçekten ödev söylendiğinde kaydediyor. Groq ile daha akıllı yanıtlar, isteğe bağlı JSON tabanlı ödev çıkarımı. Ses tarafında Google Türkçe ses motoru, en iyi ses, 0.8–1.35 arası hız ayarı, ses seçimi ve “Sesi dene” eklendi. Günlük çıkış saatlerine göre arama ve teslim öncesi hatırlatma korunuyor. Ayrıntılar: AI-KOC.md ve FIREBASE.md."
           fi

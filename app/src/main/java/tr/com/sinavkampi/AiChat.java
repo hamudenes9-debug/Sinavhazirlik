@@ -30,6 +30,8 @@ final class AiChat {
                 String key = in.optString("key", "").trim();
                 if (key.isEmpty()) throw new IllegalStateException("no-key");
                 boolean ping = in.optBoolean("ping", false);
+                boolean json = in.optBoolean("json", false);
+                int maxTokens = Math.max(16, Math.min(600, in.optInt("maxTokens", ping ? 8 : 240)));
                 List<String> models = new ArrayList<>();
                 JSONArray given = in.optJSONArray("models");
                 if (given != null) for (int i = 0; i < given.length() && i < 4; i++) {
@@ -48,7 +50,8 @@ final class AiChat {
                     JSONObject body = new JSONObject();
                     body.put("model", model);
                     body.put("messages", messages);
-                    body.put("max_tokens", ping ? 8 : 240);
+                    body.put("max_tokens", maxTokens);
+                    if (json) body.put("response_format", new JSONObject().put("type", "json_object"));
                     body.put("temperature", 0.5);
                     body.put("top_p", 0.9);
                     HttpResult response = post(key, body.toString(), ping ? 12000 : 20000);

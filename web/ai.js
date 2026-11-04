@@ -71,6 +71,7 @@ function dayRows() {
 function renderPage() {
   const app = A();
   if (!app) return '<div class="empty">Koç yükleniyor…</div>';
+  setTimeout(() => { fillVoiceOptions(); applyVoiceConfig(); }, 60);
   const stats = AIC.homeworkStats(homework, today());
   const exam = nextExam();
   const keyReady = hasKey();
@@ -157,6 +158,18 @@ function renderPage() {
       </section>
 
       <section class="card card-padding">
+        <h2>Koçun sesi</h2>
+        <p class="ai-copy">Telefonundaki Türkçe sesler arasından seç. “Sesi dene” ile hemen dinleyebilirsin.</p>
+        <label class="form-field"><span>Ses</span><select id="ai-voice"><option value="">${settings.voice ? 'Seçili ses' : 'Varsayılan (en iyi ses)'}</option></select></label>
+        <label class="form-field"><span>Konuşma hızı: <strong id="ai-rate-label">${settings.rate.toFixed(2)}×</strong></span><input type="range" id="ai-rate" min="0.8" max="1.35" step="0.05" value="${settings.rate}"></label>
+        <div class="ai-key-actions">
+          <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
+          <button class="btn btn-white" data-ai="tts-settings">Telefon ses ayarları</button>
+        </div>
+        <p class="ai-hint" id="ai-voice-hint">Daha doğal ses için telefonda Google Konuşma Hizmetleri’ni seç ve Türkçe ses paketini indir.</p>
+      </section>
+
+      <section class="card card-padding">
         <h2>Nasıl konuşuruz?</h2>
         <ul class="ai-commands">
           <li><span>“Matematik çalışma kağıdı, fen özeti”</span><small>Çıkış aramasında söylersen ödevler kaydedilir.</small></li>
@@ -167,6 +180,26 @@ function renderPage() {
       </section>
     </aside>
   </div>`;
+}
+
+function fillVoiceOptions() {
+  const select = $('#ai-voice');
+  const b = bridge();
+  if (!select || !b || typeof b.voiceList !== 'function') return;
+  let voices = [];
+  try { voices = JSON.parse(b.voiceList() || '[]'); } catch { voices = []; }
+  if (!voices.length) return;
+  const current = settings.voice || '';
+  select.innerHTML = `<option value="">Varsayılan (en iyi ses)</option>` + voices
+    .map(v => `<option value="${esc(v.name)}" ${v.name === current ? 'selected' : ''}>${esc(v.label)}</option>`)
+    .join('');
+}
+
+function applyVoiceConfig() {
+  const b = bridge();
+  if (b && typeof b.setVoiceConfig === 'function') {
+    try { b.setVoiceConfig(JSON.stringify({ voice: settings.voice || '', rate: settings.rate })); } catch {}
+  }
 }
 
 function homeCard() {
@@ -470,28 +503,39 @@ async function handleUser(text) {
   setCaption(text);
   call.messages.push({ role: 'user', content: text });
 
-  /* Okul çıkışı araması: söylenen ödevleri kaydet. */
+  const intent = AIC.classifyUtterance(text, subjects());
+
+  /* Okul çıkışı araması: yalnızca gerçekten ödev söylenmişse kaydet. */
   if (call.mode === 'intake' && !call.intakeDone) {
-    const items = AIC.parseHomeworkUtterance(text, subjects(), today());
-    if (items.length) {
-      const saved = items.map(addHomework).filter(Boolean);
-      call.intakeDone = true;
-      if (saved.length) {
-        const label = saved.map(h => `${(subjects()[h.subject] || {}).name || 'Diğer'} – ${h.title}`).join(', ');
-        const note = saved.length === 1 ? `${label} ödevi` : `${label} ödevleri`;
-        addBubble('note', `${note} kaydedildi. Teslim: ${AIC.formatDateTR(saved[0].due, true)}.`);
-        A()?.render?.();
-        speak(`Kaydettim: ${saved.map(h => h.title).join(', ')}. Teslimden bir gün önce seni yine ararım. Şimdi hangisinden başlayalım?`);
-        return;
+    if (intent === 'homework') {
+      let items = AIC.parseHomeworkUtterance(text, subjects(), today());
+      if (!items.length && hasKey()) {
+        try { items = await extractHomework(text); } catch { items = []; }
       }
+      if (items.length) {
+        const saved = items.map(addHomework).filter(Boolean);
+        call.intakeDone = true;
+        if (saved.length) {
+          addBubble('note', `${saved.map(h => `${(subjects()[h.subject] || {}).name || 'Diğer'} – ${h.title}`).join(', ')} kaydedildi. Teslim: ${AIC.formatDateTR(saved[0].due, true)}.`);
+          A()?.render?.();
+          setStatus('Koç konuşuyor…');
+          speak(`Kaydettim: ${saved.map(h => h.title).join(', ')}. Teslimden bir gün önce seni yine ararım. Başka ödev var mı?`);
+          return;
+        }
+      }
+      setStatus('Düşünüyor…');
+      speak('Tam çıkaramadım. Örnek: matematik çalışma kağıdı, fen özeti. Dersleriyle birlikte söyler misin?');
+      return;
     }
-    if (AIC.noHomework(text)) {
+    if (intent === 'no-homework') {
       call.intakeDone = true;
       speak('Ödev yoksa harika. O zaman bugünkü sınav tekrarına kısa bir bakış atalım mı?');
       return;
     }
+    /* Soru, selamlama, sohbet: kaydetme, cevap ver ve ödevleri yeniden sor. */
     setStatus('Düşünüyor…');
-    speak('Tam anlayamadım. Örnek: matematik çalışma kağıdı, fen özeti. Dersleriyle birlikte söyler misin?');
+    const answer = await answerChat(text, intent);
+    speak(answer + (intent === 'identity' || intent === 'greeting' ? '' : ' Bu arada bugün hangi ödevleri verdiler? Söylersen kaydederim.'));
     return;
   }
 
@@ -502,26 +546,39 @@ async function handleUser(text) {
     addBubble('note', `${names} tamamlandı olarak işaretlendi.`);
   }
   setStatus('Düşünüyor…');
-  let reply;
-  if (hasKey() || CONFIG.proxy || settings.proxy) {
-    try { reply = await askGroq(text); }
-    catch (err) {
-      console.warn('Groq', err);
-      const hint = AIC.explainAiError(err);
-      setStatus(hint);
-      addBubble('note', hint);
-      reply = AIC.offlineAnswer(text, offlineContext());
-    }
-  } else {
-    await new Promise(r => setTimeout(r, 350));
-    reply = AIC.offlineAnswer(text, offlineContext());
-  }
+  const reply = await answerChat(text, AIC.classifyUtterance(text, subjects()));
   if (!call?.active) return;
   speak(reply);
 }
 
 function offlineContext() {
   return { today: today(), homework, subjects: subjects(), exam: nextExam(), name: name() };
+}
+
+/* Sorulara cevap: önce Groq, yoksa çevrimdışı akıllı yanıt. */
+async function answerChat(text, intent) {
+  if (intent === 'identity') {
+    const who = AIC.identityAnswer(offlineContext());
+    if (!hasKey()) return who;
+  }
+  if (hasKey() || settings.proxy || CONFIG.proxy) {
+    try { return await askGroq(text); }
+    catch (err) {
+      console.warn('Groq', err);
+      const hint = AIC.explainAiError(err);
+      addBubble('note', hint);
+      return AIC.offlineAnswer(text, offlineContext());
+    }
+  }
+  return AIC.offlineAnswer(text, offlineContext());
+}
+
+/* Farklı cümle kalıpları için Groq'a ödev çıkarımı yaptırır. */
+async function extractHomework(text) {
+  const messages = AIC.composeHomeworkExtraction(text, subjects(), today());
+  const raw = await askGroqRaw(messages, 220);
+  const items = AIC.parseIntakeResult(raw, subjects(), today());
+  return items || [];
 }
 
 function buildUserMessages(userText) {
@@ -568,7 +625,7 @@ function aiReply(id, payload) {
   return slot.reject(new Error(data.error || 'native-error'));
 }
 
-async function fetchGroq(key, messages) {
+async function fetchGroq(key, messages, maxTokens, json) {
   /* Tarayıcıda Groq CORS'a takılabilir: önce aynı adresteki küçük proxy'yi dene. */
   if (/^https?:$/.test(location.protocol)) {
     for (const model of [...new Set(MODELS)]) {
@@ -596,7 +653,7 @@ async function fetchGroq(key, messages) {
       const res = await fetch(GROQ_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-        body: JSON.stringify({ model, messages, max_tokens: 240, temperature: 0.5, top_p: 0.9 }),
+        body: JSON.stringify({ model, messages, max_tokens: maxTokens || 240, temperature: 0.5, top_p: 0.9, ...(json ? { response_format: { type: 'json_object' } } : {}) }),
         signal: controller.signal
       });
       if (res.ok) {
@@ -611,6 +668,17 @@ async function fetchGroq(key, messages) {
     }
     throw lastErr || new Error('groq');
   } finally { clearTimeout(timeout); }
+}
+
+async function askGroqRaw(messages, maxTokens) {
+  const key = currentKey();
+  if (!key) throw new Error('no-key');
+  const b = bridge();
+  if (b && typeof b.aiChat === 'function') {
+    try { return await nativeChat({ key, messages, models: MODELS, json: true, maxTokens: maxTokens || 240 }); }
+    catch (err) { if (!String(err.message).startsWith('native-')) throw err; }
+  }
+  return fetchGroq(key, messages, maxTokens);
 }
 
 async function askGroq(userText) {
@@ -635,7 +703,7 @@ async function askGroq(userText) {
       throw err;
     }
   }
-  return fetchGroq(key, messages);
+  return fetchGroq(key, messages, maxTokens, true);
 }
 
 /* Bağlantı testi: gerçek bir Groq isteği atar ve sonucu ekranda gösterir. */
@@ -721,6 +789,24 @@ function onAiClick(btn) {
       break;
     }
     case 'test-ai': testConnection(); break;
+    case 'preview-voice': {
+      const b = bridge();
+      const sample = 'Merhaba! Ben Kamp Koçu. Bugün hangi ödevleri verdiler?';
+      if (b && typeof b.previewVoice === 'function') { try { b.previewVoice(sample); } catch { A().toast('Ses denemesi başlatılamadı.'); } }
+      else if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(sample);
+        u.lang = 'tr-TR'; u.rate = settings.rate;
+        const v = bestTurkishVoice(); if (v) u.voice = v;
+        window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+      } else A().toast('Bu cihazda ses motoru yok.');
+      break;
+    }
+    case 'tts-settings': {
+      const b = bridge();
+      if (b && typeof b.openTtsSettings === 'function') { try { b.openTtsSettings(); } catch {} }
+      else A().toast('Telefon Ayarları → Dil ve giriş → Metin okuma bölümünü aç.');
+      break;
+    }
     case 'clear-key': settings.key = ''; saveSettings(); A().render(); A().toast('Anahtar bu cihazdan silindi.'); break;
     case 'toggle-hw': toggleHomework(id); A().render(); break;
     case 'delete-hw': deleteHomework(id); A().render(); A().toast('Ödev listeden kaldırıldı.'); break;
@@ -763,6 +849,11 @@ function install() {
       settings.enabled = e.target.checked; saveSettings(); applyNativeSchedule(); A().render();
       A().toast(settings.enabled ? `Arama planı açıldı: ${AIC.scheduleSummary(settings.days)}.` : 'Okul çıkışı araması kapatıldı.');
     }
+    if (e.target.id === 'ai-voice') {
+      settings.voice = e.target.value || '';
+      saveSettings(); applyVoiceConfig();
+      A().toast(settings.voice ? 'Ses kaydedildi. “Sesi dene” ile dinleyebilirsin.' : 'Varsayılan ses kullanılacak.');
+    }
     const day = e.target.dataset?.dayTime;
     if (day) {
       const value = AIC.parseTime(e.target.value);
@@ -773,6 +864,14 @@ function install() {
     }
   });
   document.addEventListener('input', e => {
+    if (e.target.id === 'ai-rate') {
+      settings.rate = Math.max(0.7, Math.min(1.4, Number(e.target.value) || 1.12));
+      const label = $('#ai-rate-label');
+      if (label) label.textContent = settings.rate.toFixed(2) + '×';
+      clearTimeout(window.__aiRateTimer);
+      window.__aiRateTimer = setTimeout(() => { saveSettings(); applyVoiceConfig(); }, 250);
+      return;
+    }
     if (e.target.id !== 'ai-name') return;
     clearTimeout(window.__aiNameTimer);
     window.__aiNameTimer = setTimeout(() => {
@@ -844,5 +943,5 @@ window.KampAI = {
   }
 };
 
-setTimeout(() => { applyNativeSchedule(); checkAuto(); A()?.render?.(); }, 900);
+setTimeout(() => { applyNativeSchedule(); applyVoiceConfig(); checkAuto(); A()?.render?.(); }, 900);
 })();

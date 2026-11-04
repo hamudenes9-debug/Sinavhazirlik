@@ -1,6 +1,21 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.5.0** ile ödev takibi, **günlük çıkış saatine göre arama**, teslim öncesi hatırlatma ve **çalışan Groq bağlantısı** birlikte gelir.
+Sürüm **1.6.0** ile akıllı koç, ses seçimi ve ödev takibi, **günlük çıkış saatine göre arama**, teslim öncesi hatırlatma ve **çalışan Groq bağlantısı** birlikte gelir.
+
+## Akıllı davranış
+
+Koç söyleneni önce **anlar**, sonra kaydeder:
+
+| Söylediğin | Koç ne yapar |
+| --- | --- |
+| “Sen kimsin?” | Kendini tanıtır, ödev kaydetmez |
+| “Merhaba” / “Teşekkürler” | Karşılık verir, ödev sormaya devam eder |
+| “Yarın hangi sınav var?” | Takvimden yanıtlar |
+| “Matematik ödevinde takıldım” | Konuyu hatırlatıp ipucu verir |
+| “Fen özeti, Türkçe kitap okuma” | İki ödev olarak kaydeder |
+| “Bugün ödev yok” | Kaydetmez, sınav tekrarı önerir |
+
+Groq bağlantısı varsa anlama katmanı daha esnek çalışır; yoksa da cihazdaki kurallar devreye girer.
 
 ## Ne yapıyor?
 
@@ -40,7 +55,8 @@ Depo herkese açık olduğu için anahtarı dosyaya yazmak GitHub tarafından en
 
 ### Ses hızı ve kalitesi
 
-- Android’de cihazın **en iyi çevrimdışı Türkçe sesi** seçilir, konuşma hızı 1.12’ye ayarlanır.
+- Uygulama **Google Konuşma Hizmetleri** motorunu (kuruluysa) kullanır; cihazın en iyi Türkçe sesi seçilir.
+- “Koçun sesi” kartından ses ve **0.8–1.35×** hız seçilir, “Sesi dene” ile dinlenir.
 - Ses motoru uygulama açılırken hazırlanır; ilk cümlenin gecikmesi azalır.
 - Daha iyi ses için telefonda **Ayarlar → Dil ve giriş → Metin okuma** bölümünden Google Konuşma Hizmetleri’ni ve Türkçe ses paketini güncelle.
 - Mikrofonla konuşurken koç cevabı 3 kısa cümleyle sınırlar.

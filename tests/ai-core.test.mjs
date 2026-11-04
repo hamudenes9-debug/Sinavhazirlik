@@ -85,7 +85,7 @@ test('homework and settings validation reject junk', () => {
   assert.equal(AI.validateHomeworkItem({ id: 'x', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }), false);
   assert.equal(AI.validateHomeworkItem({ id: 'hw-1', title: '', subject: 'matematik', due: '2026-11-03', done: false }), false);
   assert.deepEqual(AI.sanitizeHomework([{ id: 'hw-1', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }, null]), [{ id: 'hw-1', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }]);
-  assert.deepEqual(AI.sanitizeSettings({ enabled: 1, key: ' x ' }), { enabled: true, name: '', days: { 1: '16:00', 2: '15:10', 3: '15:10', 4: '15:10', 5: '15:10', 6: '', 7: '' }, key: 'x', proxy: '' });
+  assert.deepEqual(AI.sanitizeSettings({ enabled: 1, key: ' x ' }), { enabled: true, name: '', days: { 1: '16:00', 2: '15:10', 3: '15:10', 4: '15:10', 5: '15:10', 6: '', 7: '' }, key: 'x', proxy: '', voice: '', rate: 1.12 });
   assert.equal(AI.sanitizeSettings({ days: { 2: '25:00' } }).days['2'], '15:10');
   assert.equal(AI.sanitizeSettings({ days: { 6: '11:00' } }).days['6'], '11:00');
   assert.equal(AI.sanitizeSettings({ name: '  Ali   Veli ' }).name, 'Ali Veli');
@@ -144,4 +144,40 @@ test('connection errors are explained in plain Turkish', () => {
   assert.match(AI.explainAiError(new Error('native-401')), /geçersiz/i);
   assert.match(AI.explainAiError(new Error('Failed to fetch')), /ulaşılamadı/i);
   assert.equal(typeof AI.explainAiError(new Error('groq-500: boom')), 'string');
+});
+
+test('questions are not saved as homework', () => {
+  for (const phrase of ['Sen kimsin?', 'Sen kimsin', 'merhaba', 'teşekkürler', 'nasılsın?', 'yarın hangi sınav var?', 'matematik ödevinde takıldım']) {
+    assert.deepEqual(AI.parseHomeworkUtterance(phrase, subjects, '2026-11-03'), [], phrase);
+  }
+  assert.equal(AI.classifyUtterance('Sen kimsin?', subjects), 'identity');
+  assert.equal(AI.classifyUtterance('merhaba', subjects), 'greeting');
+  assert.equal(AI.classifyUtterance('teşekkürler', subjects), 'ack');
+  assert.equal(AI.classifyUtterance('matematik ödevinde takıldım', subjects), 'help');
+  assert.equal(AI.classifyUtterance('bugün hiç ödev yok', subjects), 'no-homework');
+  assert.equal(AI.classifyUtterance('fen özeti ve türkçe kitap okuma', subjects), 'homework');
+});
+
+test('the coach introduces itself instead of recording a homework', () => {
+  const text = AI.identityAnswer({ name: 'Ahmet', homework });
+  assert.match(text, /Kamp Koçu/);
+  assert.match(text, /Ahmet/);
+  assert.match(text, /1 ödevin bekliyor|ödevin bekliyor/);
+  assert.match(AI.offlineAnswer('Sen kimsin?', { homework, subjects, today: '2026-11-03' }), /Kamp Koçu/);
+});
+
+test('Groq homework extraction result is validated', () => {
+  const items = AI.parseIntakeResult('{"items":[{"subject":"matematik","title":"çalışma kağıdı"}],"none":false}', subjects, '2026-11-03');
+  assert.deepEqual(items, [{ subject: 'matematik', title: 'Çalışma kağıdı', due: '2026-11-04' }]);
+  assert.deepEqual(AI.parseIntakeResult('{"items":[],"none":true}', subjects, '2026-11-03'), []);
+  assert.equal(AI.parseIntakeResult('bozuk json', subjects, '2026-11-03'), null);
+  assert.equal(AI.parseIntakeResult('{"items":[{"subject":"yok","title":"deneme"}]}', subjects, '2026-11-03')[0].subject, 'diger');
+});
+
+test('voice settings are clamped and kept with the profile', () => {
+  const s = AI.sanitizeSettings({ voice: 'tr-tr-x-ccc-network', rate: 2 });
+  assert.equal(s.voice, 'tr-tr-x-ccc-network');
+  assert.equal(s.rate, 1.4);
+  assert.equal(AI.sanitizeSettings({ rate: 0.1 }).rate, 0.7);
+  assert.equal(AI.sanitizeSettings({}).rate, 1.12);
 });

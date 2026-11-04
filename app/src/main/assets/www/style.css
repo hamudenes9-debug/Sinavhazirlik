@@ -207,3 +207,7 @@ body.call-open{overflow:hidden}
 
 .ai-key-warn{display:flex;align-items:flex-start;gap:7px;font-size:10px;line-height:1.6;color:#8a5a3a;background:#fdf3e7;border:1px solid #f2e0c9;border-radius:8px;padding:9px;margin:6px 0 0}
 .ai-key-warn .icon{width:13px;height:13px;margin-top:1px;flex:0 0 auto}
+
+#ai-voice{width:100%;border:1px solid #dfe7d6;border-radius:7px;padding:9px;font-size:11px;background:#fbfcf9;color:var(--ink)}
+#ai-rate{width:100%;accent-color:#6c8a55;margin-top:4px}
+#ai-rate-label{color:#5d7052}
