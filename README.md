@@ -23,6 +23,8 @@
 - Android paket adı: `Com.company.sinavhazirlik`.
 - Hesap, bulut verisi silme ve yerel JSON yedekleme.
 
+APK’lar `keystore/sinav-kampi.p12` ile **sabit imzayla** üretilir; böylece yeni sürüm eskisinin üzerine kurulabilir. Depo herkese açık olduğu için bu anahtar gizli değildir; mağaza dağıtımı için kendi anahtarını kullan.
+
 **Canlı kullanım için proje sahibinin Email/Password, Firestore ve güvenlik kurallarını etkinleştirmesi gerekir.** Yapay zekâ koçu için Groq anahtarı gerekir; anahtar depoya yazılmaz. Ayrıntılı adımlar: [FIREBASE.md](FIREBASE.md).
 
 ## Geliştirme
