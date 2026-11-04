@@ -83,7 +83,8 @@ const clipStatus = await page.evaluate(async () => {
 });
 assert.equal(clipStatus.status, 200, 'ses klibi sunulamadı');
 assert.match(clipStatus.type || '', /audio/, 'mp3 içerik türü yanlış: ' + clipStatus.type);
-assert.match(await page.locator('#ai-voice-hint').innerText(), /1\.7\.0/);
+const pkgVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
+assert.ok((await page.locator('#ai-voice-hint').innerText()).includes(pkgVersion), 'ses kartında sürüm görünmeli');
 assert(await page.locator('#ai-voice-pack').isChecked(), 'doğal ses paketi varsayılan açık olmalı');
 const plan=await page.evaluate(()=>window.KampAI._plan());
 const intake=plan.find(ev=>ev.kind==='intake');assert(intake,'intake call scheduled');assert.match(intake.text,/hangi ödevleri verdiler/);
