@@ -77,6 +77,14 @@ await page.locator('input[data-day-time="1"]').fill('16:00');await page.locator(
 await page.waitForTimeout(300);
 assert.match(await page.locator('.call-card .call-pill').innerText(),/Pzt 16:00/);
 assert.match(await page.locator('.call-card .call-pill').innerText(),/Sal–Cum 15:10/);
+const clipStatus = await page.evaluate(async () => {
+  const res = await fetch('voice/intro.mp3', { method: 'HEAD' });
+  return { status: res.status, type: res.headers.get('content-type'), bytes: res.headers.get('content-length') };
+});
+assert.equal(clipStatus.status, 200, 'ses klibi sunulamadı');
+assert.match(clipStatus.type || '', /audio/, 'mp3 içerik türü yanlış: ' + clipStatus.type);
+assert.match(await page.locator('#ai-voice-hint').innerText(), /1\.7\.0/);
+assert(await page.locator('#ai-voice-pack').isChecked(), 'doğal ses paketi varsayılan açık olmalı');
 const plan=await page.evaluate(()=>window.KampAI._plan());
 const intake=plan.find(ev=>ev.kind==='intake');assert(intake,'intake call scheduled');assert.match(intake.text,/hangi ödevleri verdiler/);
 await page.screenshot({path:'test-results/aiko.png',fullPage:true});

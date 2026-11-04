@@ -91,8 +91,8 @@ jobs:
           unzip -t artifacts/Sinav-Kampi.apk
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(firebase.js|cloud-ui.js|index.html)'
           sha256sum artifacts/Sinav-Kampi.apk | tee apk-sha256.txt
-          if gh release view v1.6.1 >/dev/null 2>&1; then
-            gh release upload v1.6.1 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
+          if gh release view v1.7.0 >/dev/null 2>&1; then
+            gh release upload v1.7.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
           else
-            gh release create v1.6.1 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.6.1 — Uygulama içi bilgi motoru ve doğal ses" --notes "Kamp Koçu artık uygulamanın kendi ders içeriğinden cevap veriyor: EBOB, bölünebilme, olasılık, kültür, kıtalar gibi sorulara internet ve anahtar olmadan yanıt verir. Soru ve sohbet cümleleri iki katmanda süzülüyor, hiçbir koşulda ödev olarak kaydedilmiyor. Ses tarafında internetli doğal Türkçe sesi varsayılan oldu, en yüksek kaliteli bulut sesi seçiliyor; hız 0.7-1.4 arası ve Sesi dene ile anında denetlenebiliyor. Ayrıntılar: AI-KOC.md."
+            gh release create v1.7.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.7.0 — doğal ses paketi ve ders bilgi bankası" --notes "Kamp Koçunun sabit cümleleri artık uygulamayla gelen doğal Türkçe ses kayıtlarıyla okunuyor: arama açılışı, \"Sen kimsin?\" cevabı, ödev kaydı, hatırlatma ve sınav uyarısı. Cihazın robotik sesi yalnızca serbest cevaplarda devreye giriyor. Ayrıca 79 maddelik 6. sınıf bilgi bankası ve gerçek hesap yapan matematik modülü eklendi; EBOB, hücre, kültür, present simple, çember çevresi gibi sorular anahtar olmadan cevaplanıyor. Sohbet cümleleri üç katmanda süzülüyor. Ayrıntılar: AI-KOC.md."
           fi

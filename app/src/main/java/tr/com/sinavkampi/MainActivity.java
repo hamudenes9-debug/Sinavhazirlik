@@ -21,6 +21,7 @@ import android.provider.Settings;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
+import android.media.MediaPlayer;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebResourceResponse;
@@ -41,6 +42,7 @@ import java.util.Locale;
 public final class MainActivity extends Activity {
     private WebView web;
     private WebViewAssetLoader assetLoader;
+    private MediaPlayer clipPlayer;
     private String pendingBackup;
     private TextToSpeech tts;
     private boolean ttsReady;
@@ -127,6 +129,42 @@ public final class MainActivity extends Activity {
             NetworkCapabilities caps = manager == null ? null : manager.getNetworkCapabilities(manager.getActiveNetwork());
             return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         } catch (Exception e) { return false; }
+    }
+    /* Uygulamayla gelen doğal ses kliplerini çalar (cihaz sesine göre çok daha doğal). */
+    private boolean playClipInternal(String name) {
+        if (name == null || !name.matches("[a-z]{3,16}")) return false;
+        if (clipPlayer != null) stopClip();
+        clipPlayer = new MediaPlayer();
+        final MediaPlayer player = clipPlayer;
+        try {
+            android.content.res.AssetFileDescriptor afd = getAssets().openFd("www/voice/" + name + ".mp3");
+            player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+            afd.close();
+            player.setOnCompletionListener(mp -> {
+                js("window.KampAI&&window.KampAI._speakDone()");
+                mp.release();
+                if (clipPlayer == mp) clipPlayer = null;
+            });
+            player.setOnErrorListener((mp, what, extra) -> {
+                js("window.KampAI&&window.KampAI._speakDone()");
+                mp.release();
+                if (clipPlayer == mp) clipPlayer = null;
+                return true;
+            });
+            player.prepare();
+            player.start();
+            return true;
+        } catch (Exception e) {
+            try { player.release(); } catch (Exception ignored) { }
+            clipPlayer = null;
+            return false;
+        }
+    }
+    private void stopClip() {
+        if (clipPlayer == null) return;
+        try { clipPlayer.stop(); } catch (Exception ignored) { }
+        try { clipPlayer.release(); } catch (Exception ignored) { }
+        clipPlayer = null;
     }
     private void applyVoicePreference() {
         if (tts == null || !ttsReady) return;
@@ -354,7 +392,15 @@ public final class MainActivity extends Activity {
         }
         @JavascriptInterface public void openPDF(String file){MainActivity.this.openPDF(file);}
         @JavascriptInterface public void aiChat(String payload) { AiChat.request(web, payload); }
+        @JavascriptInterface public void playClip(String name) {
+            runOnUiThread(() -> {
+                boolean ok = MainActivity.this.playClipInternal(name);
+                js("window.KampAI&&window.KampAI._clipResult(" + JSONObject.quote(name == null ? "" : name) + "," + ok + ")");
+            });
+        }
+        @JavascriptInterface public void stopClip() { runOnUiThread(MainActivity.this::stopClip); }
         @JavascriptInterface public void speak(String text) {
+            runOnUiThread(MainActivity.this::stopClip);
             if (text == null || text.isEmpty()) return;
             final String clean = text.length() > 3600 ? text.substring(0, 3600) : text;
             runOnUiThread(() -> {

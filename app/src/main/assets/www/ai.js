@@ -21,6 +21,50 @@ let overlay = null;
 let callTimer = null;
 let autoTimer = null;
 const pendingAi = new Map();
+/* Uygulamayla gelen doğal ses klipleri: cihazın robotik sesine düşmeden önce bunlar çalınır. */
+const CLIPS = {
+  intro: 'Merhaba! Ben Kamp Koçu. Bugün hangi ödevleri verdiler? Dersleriyle birlikte söyle, kaydedeyim.',
+  who: 'Ben Kamp Koçu’yum. Ödevlerini kaydediyorum, sınavlarına hazırlanmana yardım ediyorum ve teslimden bir gün önce seni hatırlatıyorum.',
+  capabilities: 'Ödevlerini sesle kaydediyorum, teslimden önce arıyorum, sınav takvimini söylüyorum. Ders sorularına da örnekle cevap veriyorum.',
+  thanks: 'Ne demek, her zaman. Şimdi bugün hangi ödevleri verdiler, onu söyle.',
+  none: 'Ödev yoksa harika. O zaman bugünkü sınav tekrarına kısa bir bakış atalım mı?',
+  saved: 'Kaydettim. Teslimden bir gün önce seni yine ararım. Başka ödev var mı?',
+  retry: 'Tam çıkaramadım. Örnek: matematik çalışma kağıdı, fen özeti. Dersleriyle birlikte söyler misin?',
+  reminder: 'Yarın ödevinin teslimi var. Bugün bitirmek için kısa bir plan yapalım mı?',
+  exam: 'Yarın sınavın var, unutma. Bugün kısa bir tekrar yeterli.',
+  greet: 'Merhaba! Ben Kamp Koçu. Bugün hangi ödevleri verdiler?'
+};
+let clipAudio = null;
+let clipFallback = null;
+function stopClip() {
+  try { if (clipAudio) { clipAudio.pause(); clipAudio.currentTime = 0; } } catch {}
+  clipAudio = null;
+  clipFallback = null;
+  const b = bridge();
+  if (b && typeof b.stopClip === 'function') { try { b.stopClip(); } catch {} }
+}
+function speakClip(name, ok, fail) {
+  try {
+    if (!CLIPS[name] || settings.voicePack === false) return false;
+    const b = bridge();
+    if (b && typeof b.playClip === 'function') {
+      clipFallback = { name, fail };
+      b.playClip(name);
+      return true;
+    }
+    const audio = new Audio('voice/' + name + '.mp3');
+    audio.preload = 'auto';
+    clipAudio = audio;
+    let settled = false;
+    const done = () => { if (settled) return; settled = true; clipAudio = null; ok(); };
+    const bad = () => { if (settled) return; settled = true; clipAudio = null; fail(); };
+    audio.onended = done;
+    audio.onerror = bad;
+    const played = audio.play();
+    if (played && played.catch) played.catch(bad);
+    return true;
+  } catch { return false; }
+}
 let knowledgeCache = null;
 
 function loadSettings() {
@@ -166,12 +210,16 @@ function renderPage() {
           <div><strong>İnternetli doğal ses</strong><p>Çevrimiçiyken Google’ın daha doğal Türkçe sesini kullanır. Kapalıysa cihazdaki sade ses konuşur.</p></div>
           <input type="checkbox" id="ai-network-voice" ${settings.preferNetwork !== false ? 'checked' : ''}>
         </label>
+        <label class="setting-row voice-row">
+          <div><strong>Doğal ses paketi</strong><p>Koçun sabit cümleleri uygulamayla gelen doğal kayıtlarla okunur; cihaz sesi gerekmez.</p></div>
+          <input type="checkbox" id="ai-voice-pack" ${settings.voicePack !== false ? 'checked' : ''}>
+        </label>
         <label class="form-field"><span>Konuşma hızı: <strong id="ai-rate-label">${settings.rate.toFixed(2)}×</strong></span><input type="range" id="ai-rate" min="0.8" max="1.35" step="0.05" value="${settings.rate}"></label>
         <div class="ai-key-actions">
           <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
           <button class="btn btn-white" data-ai="install-voice">Türkçe sesi indir</button>
         </div>
-        <p class="ai-hint" id="ai-voice-hint">Daha doğal ses için telefonda Google Konuşma Hizmetleri’ni seç ve Türkçe ses paketini indir.</p>
+        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.7.0.</p>
       </section>
 
       <section class="card card-padding">
@@ -370,14 +418,14 @@ function updateTimer() {
 }
 
 function opening(mode) {
-  if (mode === 'intake') return AIC.intakePrompt({ nowMs: Date.now(), name: name() });
+  if (mode === 'intake') return { text: AIC.intakePrompt({ nowMs: Date.now(), name: name() }), clip: 'intro' };
   if (mode === 'reminder') {
     const text = AIC.dueReminder({ homework, tomorrow: AIC.addDaysISO(today(), 1), today: today(), name: name() });
-    if (text) return text;
+    if (text) return { text, clip: 'reminder' };
     const exam = nextExam();
-    if (exam && exam.days === 1) return `${name() ? name() + '! ' : ''}Yarın ${exam.name} sınavın var, unutma. Kısa bir tekrar yapalım mı?`;
+    if (exam && exam.days === 1) return { text: `${name() ? name() + '! ' : ''}Yarın ${exam.name} sınavın var, unutma. Kısa bir tekrar yapalım mı?`, clip: 'exam' };
   }
-  return AIC.buildBriefing({ nowMs: Date.now(), today: today(), homework, exam: nextExam(), name: name() });
+  return { text: AIC.buildBriefing({ nowMs: Date.now(), today: today(), homework, exam: nextExam(), name: name() }), clip: null };
 }
 
 function startCall(mode = 'manual') {
@@ -395,7 +443,7 @@ function startCall(mode = 'manual') {
   callTimer = setInterval(updateTimer, 1000);
   updateTimer();
   syncFab();
-  setTimeout(() => { if (call?.active) speak(opening(mode)); }, 650);
+  setTimeout(() => { if (call?.active) { const open = opening(mode); speak(CLIPS[open.clip] || open.text, open.clip); } }, 650);
 }
 
 function endCall() {
@@ -412,7 +460,7 @@ function endCall() {
   A()?.render?.();
 }
 
-function speak(text) {
+function speak(text, clip) {
   if (!call?.active || !text) return;
   text = AIC.speechText(text);
   if (!text) return;
@@ -436,6 +484,12 @@ function speak(text) {
   call.speakDone = finish;
   const estimate = Math.min(45000, 2200 + text.length * 55);
   call.speakTimer = setTimeout(finish, estimate);
+  if (clip && speakClip(clip, finish, () => speakDevice(text, finish))) return;
+  speakDevice(text, finish);
+}
+
+/* Klip yoksa veya çalınamazsa cihazın ses motoru konuşur. */
+function speakDevice(text, finish) {
   const b = bridge();
   if (b && typeof b.speak === 'function') {
     try { b.speak(text); return; } catch {}
@@ -501,6 +555,7 @@ function listen() {
 function focusInput() { setTimeout(() => $('#call-input')?.focus(), 50); }
 
 function stopVoice() {
+  stopClip();
   const b = bridge();
   if (b && typeof b.stopVoice === 'function') { try { b.stopVoice(); } catch {} }
   try { window.speechSynthesis?.cancel(); } catch {}
@@ -520,7 +575,11 @@ async function handleUser(text) {
     /* İkinci koruma: soru/sohbet cümlesi, model "ödev" dese bile kaydedilmez. */
     if (intent === 'homework' && AIC.isNotHomework(text)) {
       setStatus('Düşünüyor…');
-      speak(await answerChat(text, 'question'));
+      A().toast('Bu bir sohbet sorusu; ödev olarak kaydetmedim.');
+      const realIntent = AIC.classifyUtterance(text, subjects());
+      const reply = await answerChat(text, realIntent);
+      const clip = realIntent === 'identity' ? 'who' : realIntent === 'capabilities' ? 'capabilities' : null;
+      speak(clip ? CLIPS[clip] : reply, clip);
       return;
     }
     if (intent === 'homework') {
@@ -536,23 +595,27 @@ async function handleUser(text) {
           addBubble('note', `${saved.map(h => `${(subjects()[h.subject] || {}).name || 'Diğer'} – ${h.title}`).join(', ')} kaydedildi. Teslim: ${AIC.formatDateTR(saved[0].due, true)}.`);
           A()?.render?.();
           setStatus('Koç konuşuyor…');
-          speak(`Kaydettim: ${saved.map(h => h.title).join(', ')}. Teslimden bir gün önce seni yine ararım. Başka ödev var mı?`);
+          speak(CLIPS.saved, 'saved');
           return;
         }
       }
       setStatus('Düşünüyor…');
-      speak('Tam çıkaramadım. Örnek: matematik çalışma kağıdı, fen özeti. Dersleriyle birlikte söyler misin?');
+      speak(CLIPS.retry, 'retry');
       return;
     }
     if (intent === 'no-homework') {
       call.intakeDone = true;
-      speak('Ödev yoksa harika. O zaman bugünkü sınav tekrarına kısa bir bakış atalım mı?');
+      speak(CLIPS.none, 'none');
       return;
     }
     /* Soru, selamlama, sohbet: kaydetme, cevap ver ve ödevleri yeniden sor. */
     setStatus('Düşünüyor…');
     const answer = await answerChat(text, intent);
-    speak(answer + (intent === 'identity' || intent === 'greeting' ? '' : ' Bu arada bugün hangi ödevleri verdiler? Söylersen kaydederim.'));
+    if (intent === 'identity') speak(CLIPS.who, 'who');
+    else if (intent === 'capabilities') speak(CLIPS.capabilities, 'capabilities');
+    else if (intent === 'greeting') speak(CLIPS.greet, 'greet');
+    else if (intent === 'ack') speak(CLIPS.thanks, 'thanks');
+    else speak(answer + ' Bu arada bugün hangi ödevleri verdiler? Söylersen kaydederim.');
     return;
   }
 
@@ -570,7 +633,7 @@ async function handleUser(text) {
 
 function knowledgeIndex() {
   if (knowledgeCache) return knowledgeCache;
-  try { knowledgeCache = AIC.buildKnowledgeIndex({ subjects: subjects(), quizzes: (window.KAMP_CONTENT || {}).quizzes || {} }); }
+  try { knowledgeCache = AIC.buildKnowledgeIndex({ subjects: subjects(), quizzes: (window.KAMP_CONTENT || {}).quizzes || {}, kb: window.KAMP_KB || [] }); }
   catch { knowledgeCache = []; }
   return knowledgeCache;
 }
@@ -818,6 +881,7 @@ function onAiClick(btn) {
     }
     case 'test-ai': testConnection(); break;
     case 'preview-voice': {
+      if (settings.voicePack !== false && speakClip('intro', () => {}, () => {})) break;
       const b = bridge();
       const sample = 'Merhaba! Ben Kamp Koçu. Bugün hangi ödevleri verdiler?';
       if (b && typeof b.previewVoice === 'function') { try { b.previewVoice(sample); } catch { A().toast('Ses denemesi başlatılamadı.'); } }
@@ -882,6 +946,11 @@ function install() {
     if (e.target.id === 'ai-call-toggle') {
       settings.enabled = e.target.checked; saveSettings(); applyNativeSchedule(); A().render();
       A().toast(settings.enabled ? `Arama planı açıldı: ${AIC.scheduleSummary(settings.days)}.` : 'Okul çıkışı araması kapatıldı.');
+    }
+    if (e.target.id === 'ai-voice-pack') {
+      settings.voicePack = e.target.checked;
+      saveSettings(); A().render();
+      A().toast(settings.voicePack ? 'Doğal ses paketi açıldı.' : 'Cihazın ses motoru kullanılacak.');
     }
     if (e.target.id === 'ai-network-voice') {
       settings.preferNetwork = e.target.checked;
@@ -956,6 +1025,12 @@ else install();
 window.KampAI = {
   renderPage, _aiReply: aiReply, testConnection, homeCard, openFromNotification, startCall, endCall, syncFab,
   _speakDone: () => { if (call?.speakDone) call.speakDone(); },
+  _clipResult: (name, ok) => {
+    if (ok) { clipFallback = null; return; }
+    const pending = clipFallback;
+    clipFallback = null;
+    if (pending && pending.name === name && typeof pending.fail === 'function') pending.fail();
+  },
   _onSpeech: text => { if (call?.active && text) handleUser(String(text)); },
   _onSpeechError: code => {
     if (!call?.active) return;

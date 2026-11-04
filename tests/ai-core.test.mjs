@@ -6,8 +6,10 @@ import AI from '../web/ai-core.js';
 
 function loadContent() {
   const sandbox = { window: {} };
-  vm.runInNewContext(fs.readFileSync(new URL('../web/content.js', import.meta.url), 'utf8'), sandbox);
-  return sandbox.window.KAMP_CONTENT || {};
+  for (const file of ['content.js', 'kb.js']) {
+    vm.runInNewContext(fs.readFileSync(new URL('../web/' + file, import.meta.url), 'utf8'), sandbox);
+  }
+  return { content: sandbox.window.KAMP_CONTENT || {}, kb: sandbox.window.KAMP_KB || [] };
 }
 
 const subjects = {
@@ -93,7 +95,7 @@ test('homework and settings validation reject junk', () => {
   assert.equal(AI.validateHomeworkItem({ id: 'x', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }), false);
   assert.equal(AI.validateHomeworkItem({ id: 'hw-1', title: '', subject: 'matematik', due: '2026-11-03', done: false }), false);
   assert.deepEqual(AI.sanitizeHomework([{ id: 'hw-1', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }, null]), [{ id: 'hw-1', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }]);
-  assert.deepEqual(AI.sanitizeSettings({ enabled: 1, key: ' x ' }), { enabled: true, name: '', days: { 1: '16:00', 2: '15:10', 3: '15:10', 4: '15:10', 5: '15:10', 6: '', 7: '' }, key: 'x', proxy: '', voice: '', rate: 1.12, preferNetwork: true });
+  assert.deepEqual(AI.sanitizeSettings({ enabled: 1, key: ' x ' }), { enabled: true, name: '', days: { 1: '16:00', 2: '15:10', 3: '15:10', 4: '15:10', 5: '15:10', 6: '', 7: '' }, key: 'x', proxy: '', voice: '', rate: 1.12, preferNetwork: true, voicePack: true });
   assert.equal(AI.sanitizeSettings({ days: { 2: '25:00' } }).days['2'], '15:10');
   assert.equal(AI.sanitizeSettings({ days: { 6: '11:00' } }).days['6'], '11:00');
   assert.equal(AI.sanitizeSettings({ name: '  Ali   Veli ' }).name, 'Ali Veli');
@@ -201,15 +203,53 @@ test('chatty sentences are never treated as homework', () => {
 });
 
 test('local knowledge answers real lesson questions', () => {
-  const idx = AI.buildKnowledgeIndex({ subjects, quizzes: loadContent().quizzes || {} });
-  assert.ok(idx.length > 60, 'index: ' + idx.length);
-  ['asal sayı nedir', 'EBOB nasıl bulunur', '3 e bölünebilme kuralı', 'olasılık nedir', 'kıtalar ve okyanuslar'].forEach(q => {
-    assert.ok(AI.knowledgeAnswer(q, { knowledge: idx, subjects }), q);
-  });
+  const { content, kb } = loadContent();
+  assert.ok(kb.length > 70, 'kb entries: ' + kb.length);
+  const idx = AI.buildKnowledgeIndex({ subjects, quizzes: content.quizzes || {}, kb });
+  assert.ok(idx.length > 140, 'index: ' + idx.length);
+  const questions = {
+    'asal sayı nedir': /asal sayı/i,
+    'EBOB nasıl bulunur': /EBOB/i,
+    '3 e bölünebilme kuralı': /3’e|3'e/,
+    'olasılık nedir': /[Oo]lasılık/,
+    'kıtalar ve okyanuslar': /Atlas|kıta/i,
+    'hücre nedir': /Hücre/i,
+    'sindirim nasıl olur': /[Ss]indirim/,
+    'kültür nedir': /Kültür/i,
+    'present simple nedir': /Present simple/i,
+    'çemberin çevresi': /çevre/i,
+    'deprem': /[Dd]eprem/,
+    'noktalama işaretleri': /[Nn]okta/
+  };
+  for (const [q, re] of Object.entries(questions)) {
+    const answer = AI.knowledgeAnswer(q, { knowledge: idx, subjects });
+    assert.ok(answer, 'cevap yok: ' + q);
+    assert.match(answer, re, q + ' → ' + answer);
+  }
   assert.equal(AI.knowledgeAnswer('bugün hava nasıl', { knowledge: idx, subjects }), null);
   assert.equal(AI.knowledgeAnswer('sen kimsin', { knowledge: idx, subjects }), null);
   const ctx = { knowledge: idx, subjects, homework, today: '2026-11-03', name: 'Ahmet' };
   assert.match(AI.offlineAnswer('EBOB nasıl bulunur', ctx), /EBOB/i);
+});
+
+test('the coach does arithmetic itself', () => {
+  assert.equal(AI.solveMath('12 x 8 kaç eder'), '12 × 8 = 96.');
+  assert.equal(AI.solveMath('144 / 12'), '144 ÷ 12 = 12.');
+  assert.equal(AI.solveMath('45+18'), '45+18 = 63.');
+  assert.equal(AI.solveMath('80in %25i'), '80 sayısının %25’si = 20.');
+  assert.equal(AI.solveMath('2 üssü 5'), '2 üssü 5 = 32.');
+  assert.equal(AI.solveMath('bugün hava nasıl'), null);
+});
+
+test('bundled natural voice clips ship with the app', () => {
+  const names = ['intro', 'who', 'capabilities', 'thanks', 'none', 'saved', 'retry', 'reminder', 'exam', 'greet'];
+  for (const name of names) {
+    const file = new URL('../web/voice/' + name + '.mp3', import.meta.url);
+    const size = fs.statSync(file).size;
+    assert.ok(size > 8000, name + ' çok küçük: ' + size);
+    const head = fs.readFileSync(file).subarray(0, 3).toString('latin1');
+    assert.equal(head, 'ID3', name + ' geçerli bir mp3 değil');
+  }
 });
 
 test('spoken text strips markup and emoji', () => {

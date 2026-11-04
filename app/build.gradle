@@ -6,14 +6,15 @@ android {
         applicationId 'Com.company.sinavhazirlik'
         minSdk 26
         targetSdk 35
-        versionCode 8
-        versionName '1.6.1'
+        versionCode 9
+        versionName '1.7.0'
     }
     buildTypes {
         debug { applicationIdSuffix ''; versionNameSuffix '' }
         release { minifyEnabled false }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    androidResources { noCompress 'mp3' }
 }
 dependencies { implementation 'androidx.core:core:1.15.0'
     implementation 'androidx.webkit:webkit:1.12.1' }

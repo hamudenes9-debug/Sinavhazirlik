@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.6.1** ile koç, uygulamanın **kendi ders içeriğinden** cevap verir; anahtar veya internet olmadan da EBOB, bölünebilme, olasılık gibi sorulara gerçek yanıt bulur. Soru ve sohbet cümleleri **iki katmanda** süzülür ve hiçbir koşulda ödev olarak kaydedilmez. Ses tarafında **internetli doğal Türkçe ses** varsayılandır.
+Sürüm **1.7.0**: koçun sabit cümleleri artık **uygulamayla gelen doğal Türkçe ses kayıtlarıyla** okunur; cihazın robotik sesi yalnızca serbest cevaplarda kullanılır. **79 maddelik 6. sınıf bilgi bankası** ve **hesap makinesi** eklendi, böylece anahtar olmadan da ders soruları yanıtlanır. Sohbet cümleleri **üç katmanda** süzülür ve hiçbir koşulda ödev olarak kaydedilmez.
 
 ## Akıllı davranış
 
@@ -18,7 +18,7 @@ Koç söyleneni önce **anlar**, sonra kaydeder:
 | “Bana bir şaka yap” | Kısa bir şaka yapar, sonra derse döner |
 | “Bugün hava nasıl?” | Ders dışı soruya uydurma cevap vermez, nazikçe konuyu ödeve getirir |
 
-Sohbet cümleleri iki ayrı katmanda süzülür: niyet katmanı (`isNotHomework`) ve kayıt öncesi güvenlik kontrolü. Model “ödev” dese bile “Sen kimsin?” gibi bir cümle listeye eklenmez.
+Sohbet cümleleri **üç ayrı katmanda** süzülür: (1) niyet katmanı, (2) model/Groq çıktısındaki başlıkların doğrulanması, (3) depolama katmanı (`addHomework`). Model “ödev” dese bile “Sen kimsin?” gibi bir cümle listeye eklenmez. Engellenen cümlede ekranda “Bu bir sohbet sorusu; ödev olarak kaydetmedim.” bilgisi çıkar.
 
 Groq bağlantısı varsa anlama katmanı daha esnek çalışır; yoksa da **cihazdaki bilgi motoru** devreye girer.
 
@@ -34,7 +34,8 @@ Groq bağlantısı varsa anlama katmanı daha esnek çalışır; yoksa da **ciha
 - **Sesli sohbet:** mikrofonla veya yazarak cevap verilir. Koç cevabı sesli okur.
 - **Ödev işaretleme:** “Matematik ödevini yaptım” denince o ödev tamamlandı olarak işaretlenir.
 - **Yardım:** “Fen ödevinde takıldım” denince konu hatırlatılır ve küçük bir ipucu verilir.
-- **Çevrimdışı bilgi motoru:** uygulamanın 6. sınıf konu özetleri ve 68 sorunun açıklaması aranabilir bir dizine dönüştürülür (118 kayıt). “EBOB nasıl bulunur”, “3’e bölünebilme kuralı”, “olasılık nedir” gibi sorulara anahtar olmadan örnekli cevap verir. Ders dışı sorularda tahmin yürütmez.
+- **Çevrimdışı bilgi motoru:** konu özetleri, 68 sorunun açıklaması ve **79 maddelik bilgi bankası** tek bir aranabilir dizinde toplanır (≈200 kayıt). “EBOB nasıl bulunur”, “hücre nedir”, “present simple”, “kültür nedir”, “çemberin çevresi” gibi sorulara anahtar olmadan cevap verir. Türkçe ekler kök eşleştirmesiyle çözülür; ders dışı sorularda tahmin yürütmez.
+- **Hesap makinesi:** “12 × 8 kaç eder”, “144 / 12”, “80’in %25’i”, “2 üssü 5” gibi işlemleri gerçekten hesaplar ve sonucu söyler.
 - **Çevrimiçi:** internet veya anahtar olmadan da ödev/sınav bilgileri sesli söylenir; Groq anahtarı bağlıysa yanıtlar daha esnek olur ve uygulama içeriği modele bağlam olarak verilir.
 
 > **Önemli:** Bu “arama” gerçek telefon araması değildir. Koç uygulama içinde sesli arama ekranı açar; telefon faturası, numara paylaşımı veya arama izni gerekmez.

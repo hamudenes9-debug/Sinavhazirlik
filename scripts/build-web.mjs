@@ -24,6 +24,6 @@ let faces='';for(const [font,family,weights] of [['dm-sans','DM Sans',[400,500,6
 await writeFile(target+'/style.css',faces+css);
 const files=[];async function walk(dir,prefix=''){for(const e of await readdir(dir,{withFileTypes:true})){const p=prefix+e.name;if(e.isDirectory())await walk(join(dir,e.name),p+'/');else if(e.name!=='sw.js')files.push(p);}}
 await walk(target);
-const sw=(await readFile(target+'/sw.js','utf8')).replace('sinav-kampi-v1','sinav-kampi-v1.6.1').replace('const ASSETS=[','const ASSETS=[...'+JSON.stringify(files)+',');
+const sw=(await readFile(target+'/sw.js','utf8')).replace('sinav-kampi-v1','sinav-kampi-v1.7.0').replace('const ASSETS=[','const ASSETS=[...'+JSON.stringify(files)+',');
 await writeFile(target+'/sw.js',sw);
 console.log('Offline web assets and bundled Firebase SDK ready.');

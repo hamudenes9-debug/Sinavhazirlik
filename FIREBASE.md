@@ -83,7 +83,7 @@ npm run test:browser   # sunucu yoksa kendisi başlatır
 
 Emulator testleri `demo-sinav-kampi` projesini kullanır; canlı `sinavkam` verisine dokunmaz. GitHub Actions bu testleri ve APK derlemesini çalıştırır; v1.1.0 için kurallar, iki cihazlı bulut senaryosu, çevrimdışı önbellek ve Android derlemesi CI’da geçmiştir. Emulator başarısı canlı proje ayarlarının yayımlandığını kanıtlamaz. Canlı doğrulama için yukarıdaki üç ayardan sonra gerçek bir hesapla giriş ve iki cihazda eşitleme kontrolü yapılmalıdır.
 
-Kurulabilir APK: https://github.com/hamudenes9-debug/Sinavhazirlik/releases/tag/v1.6.1
+Kurulabilir APK: https://github.com/hamudenes9-debug/Sinavhazirlik/releases/tag/v1.7.0
 
 ## Sorun giderme
 
