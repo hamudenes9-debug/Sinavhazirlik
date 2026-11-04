@@ -224,8 +224,11 @@ function newId() {
   const rand = globalThis.crypto?.randomUUID?.() || (Date.now() + '-' + Math.random().toString(36).slice(2, 10));
   return 'hw-' + rand.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
 }
-function addHomework({ title, subject, due }) {
-  const item = { id: newId(), title: String(title).trim().slice(0, 120), subject, due, done: false, createdAt: Date.now() };
+function addHomework({ title, subject, due, manual }) {
+  const clean = String(title || '').trim();
+  /* Üçüncü katman: sesli/otomatik kayıtta sohbet cümlesi asla ödev olmaz. Elle eklemede kullanıcıya güvenilir. */
+  if (!manual && AIC.isNotHomework(clean)) return null;
+  const item = { id: newId(), title: clean.slice(0, 120), subject, due, done: false, createdAt: Date.now() };
   if (!AIC.validateHomeworkItem(item)) return null;
   homework = AIC.sanitizeHomework([...homework, item]);
   saveHomework(); applyNativeSchedule();
@@ -871,7 +874,7 @@ function install() {
     const due = String(data.get('due') || AIC.nextSchoolDay(today()));
     if (!title) { A().toast('Ödev başlığını yaz.'); return; }
     if (!/^20\d{2}-\d{2}-\d{2}$/.test(due)) { A().toast('Geçerli bir teslim tarihi seç.'); return; }
-    addHomework({ title, subject, due });
+    addHomework({ title, subject, due, manual: true });
     A().render();
     A().toast('Ödev eklendi. Teslimden bir gün önce koç hatırlatacak.');
   });
