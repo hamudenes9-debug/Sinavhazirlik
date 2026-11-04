@@ -229,7 +229,7 @@ function renderPage() {
           <li><span>“Matematik ödevini yaptım”</span><small>Ödevi tamamlandı olarak işaretler.</small></li>
           <li><span>“Fen ödevinde takıldım”</span><small>Konuyu hatırlatıp ipucu verir.</small></li>
         </ul>
-        <p class="ai-hint">Mikrofon yoksa yazarak da konuşabilirsin. Teslimden önceki gün koç “ödevin var, unutma” der.</p>
+        <p class="ai-hint">Aramada yazma yoktur; koç yalnızca mikrofonla dinler. Teslimden önceki gün koç “ödevin var, unutma” der.</p>
       </section>
     </aside>
   </div>`;
