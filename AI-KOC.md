@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.6.0** ile akıllı koç, ses seçimi ve ödev takibi, **günlük çıkış saatine göre arama**, teslim öncesi hatırlatma ve **çalışan Groq bağlantısı** birlikte gelir.
+Sürüm **1.6.1** ile koç, uygulamanın **kendi ders içeriğinden** cevap verir; anahtar veya internet olmadan da EBOB, bölünebilme, olasılık gibi sorulara gerçek yanıt bulur. Soru ve sohbet cümleleri **iki katmanda** süzülür ve hiçbir koşulda ödev olarak kaydedilmez. Ses tarafında **internetli doğal Türkçe ses** varsayılandır.
 
 ## Akıllı davranış
 
@@ -14,8 +14,13 @@ Koç söyleneni önce **anlar**, sonra kaydeder:
 | “Matematik ödevinde takıldım” | Konuyu hatırlatıp ipucu verir |
 | “Fen özeti, Türkçe kitap okuma” | İki ödev olarak kaydeder |
 | “Bugün ödev yok” | Kaydetmez, sınav tekrarı önerir |
+| “EBOB nasıl bulunur?” | Uygulamadaki konu özeti ve soru açıklamasından örnekli yanıt verir |
+| “Bana bir şaka yap” | Kısa bir şaka yapar, sonra derse döner |
+| “Bugün hava nasıl?” | Ders dışı soruya uydurma cevap vermez, nazikçe konuyu ödeve getirir |
 
-Groq bağlantısı varsa anlama katmanı daha esnek çalışır; yoksa da cihazdaki kurallar devreye girer.
+Sohbet cümleleri iki ayrı katmanda süzülür: niyet katmanı (`isNotHomework`) ve kayıt öncesi güvenlik kontrolü. Model “ödev” dese bile “Sen kimsin?” gibi bir cümle listeye eklenmez.
+
+Groq bağlantısı varsa anlama katmanı daha esnek çalışır; yoksa da **cihazdaki bilgi motoru** devreye girer.
 
 ## Ne yapıyor?
 
@@ -29,7 +34,8 @@ Groq bağlantısı varsa anlama katmanı daha esnek çalışır; yoksa da cihazd
 - **Sesli sohbet:** mikrofonla veya yazarak cevap verilir. Koç cevabı sesli okur.
 - **Ödev işaretleme:** “Matematik ödevini yaptım” denince o ödev tamamlandı olarak işaretlenir.
 - **Yardım:** “Fen ödevinde takıldım” denince konu hatırlatılır ve küçük bir ipucu verilir.
-- **Çevrimdışı:** internet veya anahtar olmadan da ödev/sınav bilgileri sesli söylenir; ayrıntılı yardım için Groq anahtarı gerekir.
+- **Çevrimdışı bilgi motoru:** uygulamanın 6. sınıf konu özetleri ve 68 sorunun açıklaması aranabilir bir dizine dönüştürülür (118 kayıt). “EBOB nasıl bulunur”, “3’e bölünebilme kuralı”, “olasılık nedir” gibi sorulara anahtar olmadan örnekli cevap verir. Ders dışı sorularda tahmin yürütmez.
+- **Çevrimiçi:** internet veya anahtar olmadan da ödev/sınav bilgileri sesli söylenir; Groq anahtarı bağlıysa yanıtlar daha esnek olur ve uygulama içeriği modele bağlam olarak verilir.
 
 > **Önemli:** Bu “arama” gerçek telefon araması değildir. Koç uygulama içinde sesli arama ekranı açar; telefon faturası, numara paylaşımı veya arama izni gerekmez.
 

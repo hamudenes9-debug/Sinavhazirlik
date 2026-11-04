@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import fs from 'node:fs';
+import vm from 'node:vm';
 import AI from '../web/ai-core.js';
+
+function loadContent() {
+  const sandbox = { window: {} };
+  vm.runInNewContext(fs.readFileSync(new URL('../web/content.js', import.meta.url), 'utf8'), sandbox);
+  return sandbox.window.KAMP_CONTENT || {};
+}
 
 const subjects = {
   matematik: { name: 'Matematik', short: 'Mat', topics: ['Çarpanlar ve katlar'] },
@@ -85,7 +93,7 @@ test('homework and settings validation reject junk', () => {
   assert.equal(AI.validateHomeworkItem({ id: 'x', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }), false);
   assert.equal(AI.validateHomeworkItem({ id: 'hw-1', title: '', subject: 'matematik', due: '2026-11-03', done: false }), false);
   assert.deepEqual(AI.sanitizeHomework([{ id: 'hw-1', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }, null]), [{ id: 'hw-1', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }]);
-  assert.deepEqual(AI.sanitizeSettings({ enabled: 1, key: ' x ' }), { enabled: true, name: '', days: { 1: '16:00', 2: '15:10', 3: '15:10', 4: '15:10', 5: '15:10', 6: '', 7: '' }, key: 'x', proxy: '', voice: '', rate: 1.12 });
+  assert.deepEqual(AI.sanitizeSettings({ enabled: 1, key: ' x ' }), { enabled: true, name: '', days: { 1: '16:00', 2: '15:10', 3: '15:10', 4: '15:10', 5: '15:10', 6: '', 7: '' }, key: 'x', proxy: '', voice: '', rate: 1.12, preferNetwork: true });
   assert.equal(AI.sanitizeSettings({ days: { 2: '25:00' } }).days['2'], '15:10');
   assert.equal(AI.sanitizeSettings({ days: { 6: '11:00' } }).days['6'], '11:00');
   assert.equal(AI.sanitizeSettings({ name: '  Ali   Veli ' }).name, 'Ali Veli');
@@ -180,4 +188,36 @@ test('voice settings are clamped and kept with the profile', () => {
   assert.equal(s.rate, 1.4);
   assert.equal(AI.sanitizeSettings({ rate: 0.1 }).rate, 0.7);
   assert.equal(AI.sanitizeSettings({}).rate, 1.12);
+});
+
+
+test('chatty sentences are never treated as homework', () => {
+  ['Sen kimsin?', 'Merhaba', 'nasılsın', 'bugün hava nasıl', 'ne yapabilirsin', 'bana bir şaka yap'].forEach(text => {
+    assert.equal(AI.isNotHomework(text), true, text);
+    assert.notEqual(AI.classifyUtterance(text, subjects), 'homework', text);
+  });
+  assert.equal(AI.isNotHomework('matematik çalışma kağıdı'), false);
+  assert.deepEqual(AI.parseIntakeResult('{"items":[{"subject":"matematik","title":"Sen kimsin?"}]}', subjects, '2026-11-03'), []);
+});
+
+test('local knowledge answers real lesson questions', () => {
+  const idx = AI.buildKnowledgeIndex({ subjects, quizzes: loadContent().quizzes || {} });
+  assert.ok(idx.length > 60, 'index: ' + idx.length);
+  ['asal sayı nedir', 'EBOB nasıl bulunur', '3 e bölünebilme kuralı', 'olasılık nedir', 'kıtalar ve okyanuslar'].forEach(q => {
+    assert.ok(AI.knowledgeAnswer(q, { knowledge: idx, subjects }), q);
+  });
+  assert.equal(AI.knowledgeAnswer('bugün hava nasıl', { knowledge: idx, subjects }), null);
+  assert.equal(AI.knowledgeAnswer('sen kimsin', { knowledge: idx, subjects }), null);
+  const ctx = { knowledge: idx, subjects, homework, today: '2026-11-03', name: 'Ahmet' };
+  assert.match(AI.offlineAnswer('EBOB nasıl bulunur', ctx), /EBOB/i);
+});
+
+test('spoken text strips markup and emoji', () => {
+  const spoken = AI.speechText('**Harika!** 😀 \n- Matematik: 10 soru\n- Fen: özet');
+  assert.ok(!spoken.includes('*'));
+  assert.ok(!spoken.includes('😀'));
+  assert.match(spoken, /Matematik/);
+  assert.equal(AI.speechText(''), '');
+  assert.equal(AI.sanitizeSettings({}).preferNetwork, true);
+  assert.equal(AI.sanitizeSettings({ preferNetwork: false }).preferNetwork, false);
 });

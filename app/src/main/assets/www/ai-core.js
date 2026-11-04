@@ -286,14 +286,16 @@ function composeMessages(input){
    '- Sesli konuşuyorsun. En fazla 3 kısa cümle kur; madde işareti, emoji ve markdown kullanma.',
    '- "Sen kimsin?", "ne yapabilirsin?", "nasılsın?" gibi sorulara doğal cevap ver; bunları ödev sanma.',
    '- Ders, ödev ve genel bilgi sorularını 6. sınıf düzeyinde, doğru ve kısa yanıtla; bilmiyorsan bilmediğini söyle.',
-   '- Yalnızca aşağıdaki verilere dayan; olmayan ödev, tarih veya not uydurma.',
+   '- Ödev, sınav tarihi ve not bilgisi için yalnızca aşağıdaki verilere dayan; olmayan ödev veya tarih uydurma.',
+   '- Ders ve genel kültür sorularında 6. sınıf düzeyinde bildiğin doğru bilgiyi kullanabilirsin; emin değilsen tahmin etme.',
    '- Ödev yardımı istenirse konuyu tek cümleyle hatırlat, sonra cevabı vermeden küçük bir ipucu ver.',
    '- Öğrenci bir ödevi bitirdiğini söylerse kısaca tebrik et ve sıradaki ödevi hatırlat.',
    '- Ders dışı veya uygunsuz istekte kibarca konuyu ödeve getir. Sağlık/acil durumda güvendiği bir yetişkine yönlendir.',
    `Bugün: ${formatDateTR(c.today,true)}.${c.name?` Öğrencinin adı: ${c.name}.`:''}`,
    `Ödevler:\n${describeHomework(c.homework,c.today)}`,
    `Sınavlar:\n${describeExams(c.exams)}`,
-   c.tasks&&c.tasks.length?`Bugünkü plan: ${c.tasks.slice(0,4).map(t=>t.title+(t.done?' (bitti)':'')).join(', ')}.`:''
+   c.tasks&&c.tasks.length?`Bugünkü plan: ${c.tasks.slice(0,4).map(t=>t.title+(t.done?' (bitti)':'')).join(', ')}.`:'',
+   knowledgeBrief(c)
   ].filter(Boolean).join('\n');
   const messages=[{role:'system',content:system}];
   for(const m of (c.history||[]).slice(-8)){
@@ -302,12 +304,23 @@ function composeMessages(input){
   messages.push({role:'user',content:String(c.userText||'').slice(0,1200)});
   return messages;
 }
+/* Modelin uydurmak yerine uygulama içeriğine dayanması için kısa bilgi notu. */
+function knowledgeBrief(c){
+  try{
+    if(!Array.isArray(c&&c.knowledge)||!c.knowledge.length||!c.userText)return '';
+    const hits=searchKnowledge(c.userText,c.knowledge,3);
+    if(!hits.length)return '';
+    return 'Uygulama içeriğinden ilgili notlar:\n'+hits.map(h=>`- ${h.text}`).join('\n');
+  }catch{return '';}
+}
+
 /* Kullanıcının ne söylediğini anlar: ödev mi, soru mu, teşekkür mü? */
 function classifyUtterance(text,subjects){
   const raw=String(text||'').trim();
   const n=norm(raw);
   if(!raw)return 'chat';
   if(IDENTITY_PATTERNS.some(p=>n.includes(p)))return 'identity';
+  if(/ne yapabilirsin|neler yapabilirsin|nasil yardim|ne ise yararsin/.test(n))return 'capabilities';
   if(hasWord(n,DONE_WORDS))return 'done';
   if(hasWord(n,HELP_WORDS)&&(matchSubject(raw,subjects)||/odev|soru|konu/.test(n)))return 'help';
   if(noHomework(raw))return 'no-homework';
@@ -336,6 +349,12 @@ function offlineAnswer(text,ctx){
   const c=ctx||{},subjects=c.subjects||{},today=c.today||'';
   const intent=classifyUtterance(text,subjects);
   if(intent==='identity')return identityAnswer(c);
+  if(intent==='capabilities')return 'Ödevlerini sesli olarak kaydediyorum, teslimden önce seni arıyorum, sınav takvimini söylüyorum ve ders sorularına ipucu veriyorum. İstersen “matematik ödevini yaptım” de, işaretleyeyim.';
+  if(/kac odev|odevlerim ne|odev listesi|odevlerim neler/.test(norm(text))){
+   const pending=pendingHomework(c.homework);
+   if(!pending.length)return 'Şu an bekleyen ödevin yok. Yeni ödev verirlerse söyle, kaydedeyim.';
+   return `${pending.length} ödevin bekliyor: ${pending.slice(0,4).map(h=>h.title).join(', ')}.`;
+  }
   if(intent==='ack')return pendingHomework(c.homework).length?`Tamam! Sırada ${pendingHomework(c.homework)[0].title} var. Başlayalım mı?`:'Tamam! Bir şey olursa buradayım.';
   if(intent==='greeting')return `${c.name?c.name+', ':''}merhaba! Bugünkü ödevleri konuşalım mı?`;
   if(intent==='question'&&/sinav/.test(norm(text))&&c.exam)return `Sıradaki sınavın ${c.exam.name}. ${c.exam.days===0?'Bugün':c.exam.days===1?'Yarın':c.exam.days+' gün sonra'}.`;
@@ -351,14 +370,122 @@ function offlineAnswer(text,ctx){
   if(/sinav|sinavlar|hangi sinav/.test(norm(text))&&c.exam){
    return `Sıradaki sınavın ${c.exam.name}. ${c.exam.days===0?'Bugün':c.exam.days===1?'Yarın':c.exam.days+' gün sonra'}. Bugün 15 dakika tekrar yeterli.`;
   }
+  if(/saka yap|fikra anlat|beni guldur/.test(norm(text))){
+   const jokes=[
+    'Öğretmen sormuş: “İki elma yesem, birini sana versem kaç elmam kalır?” Öğrenci: “Bende hiç elma yok ki öğretmenim!”',
+    'Matematik kitabı neden üzgünmüş? Çünkü çok fazla problemi varmış.',
+    'Fen dersinde öğretmen: “Suyun formülü ne?” Öğrenci: “H₂O.” Öğretmen: “Peki neden iki hidrojen?” Öğrenci: “Çünkü biri yalnız kalmasın.”'
+   ];
+   return jokes[Math.floor(Math.random()*jokes.length)]+' Şimdi istersen bir ders sorusu da sorabilirsin.';
+  }
+  const local=knowledgeAnswer(text,c);
+  if(local)return local;
   if(pendingHomework(c.homework).length){
    const pending=pendingHomework(c.homework);
    const names=pending.slice(0,3).map(h=>h.title).join(', ');
    return `Bekleyen ${pending.length} ödevin var: ${names}. ${subjectTip(subjects,pending[0].subject)} Hangisiyle başlayalım?`;
   }
   if(isGreeting(text))return 'Merhaba! Bugünkü ödevlerin tamam görünüyor. Kısa bir sınav tekrarı yapalım mı?';
-  return 'Şu an internete ulaşamadım ama ödevlerini biliyorum. Yeni bir ödev ekleyebilir veya sınav tekrarı isteyebilirsin.';
+  return 'Bu konuyu kendi notlarımdan bulamadım. Ödev & AI koç ekranındaki anahtarı bağlarsan daha geniş cevap verebilirim. Şimdilik hangi derse çalışmak istediğini söyle.';
 }
+/* Sesli okumak için metni sadeleştirir (emoji, markdown, uzun parantezler). */
+function speechText(text,limit){
+  let out=String(text||'')
+   .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,'')
+   .replace(/[*_`#>~|]+/g,'')
+   .replace(/\[(.*?)\]\((.*?)\)/g,'$1')
+   .replace(/\s*\(([^)]{0,80})\)/g,' ')
+   .replace(/\s+/g,' ')
+   .trim();
+  const max=limit||520;
+  if(out.length<=max)return out;
+  const cut=out.slice(0,max);
+  const stop=Math.max(cut.lastIndexOf('.'),cut.lastIndexOf('!'),cut.lastIndexOf('?'));
+  return (stop>max*0.5?cut.slice(0,stop+1):cut.replace(/\s+\S*$/,''))+'…';
+}
+
+/* "Sen kimsin?", "merhaba" gibi cümleler asla ödev başlığı olamaz. */
+const NOT_HOMEWORK=['sen kimsin','kimsin','sen nesin','nesin','nasilsin','naber','merhaba','selam','gunaydin','iyi aksamlar','tesekkurler','tesekkur ederim','sagol','tamam','peki','evet','hayir','anladim','ne yapabilirsin','neler yapabilirsin','yardim et','saat kac','bugun gunlerden ne','hangi sinav var'];
+function isNotHomework(text){
+  const n=norm(text);
+  if(!n)return true;
+  if(/\?$/.test(String(text||'').trim()))return true;
+  if(NOT_HOMEWORK.some(p=>n===p||n.startsWith(p+' ')||n.endsWith(' '+p)))return true;
+  if(hasWord(n,['kimsin','nesin','misin','musun','misiniz','nasilsin','ne yapabilirsin']))return true;
+  /* Soru kelimesi var ve ödevle ilgili bir kelime yoksa bu bir sohbet sorusudur. */
+  const asksSomething=/\b(nasil|neden|nicin|nerede|kim|ne zaman|nedir|midir)\b/.test(n);
+  const homeworkish=/\b(odev|odevler|odevim|calisma|kitap|sayfa|test|proje|sunum|okuma|coz|yaz|bitir)\b/.test(n);
+  if(asksSomething&&!homeworkish)return true;
+  if(/saka yap|fikra anlat|hikaye anlat|bilmece sor|oyun oyna|sohbet et|bana bir sey/.test(n))return true;
+  return false;
+}
+
+/* Uygulamanın kendi içeriğinden (konu özeti + 68 soru açıklaması) cevap bulur. */
+function buildKnowledgeIndex(content){
+  const index=[];
+  const subjects=(content&&content.subjects)||{};
+  for(const [id,s] of Object.entries(subjects)){
+    for(const topic of (s.topics||[]))index.push({subject:id,kind:'topic',weight:0.55,text:`${topic} konusuna çalış.`,tokens:norm(`${s.name} ${topic}`),stems:stems(`${s.name} ${topic}`)});
+    if(s.note)index.push({subject:id,kind:'note',weight:0.9,text:s.note,tokens:norm(`${s.name} ${s.note}`),stems:stems(`${s.name} ${s.note}`)});
+  }
+  const quizzes=(content&&content.quizzes)||{};
+  for(const [subject,list] of Object.entries(quizzes)){
+    for(const q of (list||[])){
+      if(!q)continue;
+      const name=(subjects[subject]&&subjects[subject].name)||subject;
+      const question=q.q||q.question||'';
+      const answer=q.explanation||question||'';
+      if(!answer)continue;
+      index.push({subject,kind:'quiz',weight:1.4,text:answer,tokens:norm(`${name} ${question} ${answer} ${(q.options||[]).join(' ')}`),stems:stems(`${name} ${question} ${answer} ${(q.options||[]).join(' ')}`)});
+    }
+  }
+  return index;
+}
+const SCHOOL_TERMS=['ebob','ekok','asal','carpan','kat','bolunebilme','bolme','kalansiz','olasilik','ondalik','kesir','yuzde','oran','uslu','karekok','cebir','denklem','kultur','kitalar','okyanus','toplum','grup','rol','sosyal','paragraf','anlam','sozcuk','yazim','noktalama','fiil','cumle','metin','greeting','present','routine','ingilizce','kelime','gramer','kuvvet','hareket','sindirim','destek','hucre','canli','din','ibadet','ahlak','peygamber','kuran'];
+const STOPWORDS=['bir','ve','ile','icin','gibi','ama','fakat','cok','daha','nedir','ne','mi','mu','misin','misiniz','nasil','neden','nicin','hangi','bu','su','o','da','de','ki','olarak','olan','olur','midir'];
+function stems(text){
+  return norm(text).split(' ').filter(w=>w.length>=4).map(w=>w.slice(0,5));
+}
+function inSchoolDomain(text){
+  const n=norm(text);
+  return SCHOOL_TERMS.some(term=>n.includes(term));
+}
+function searchKnowledge(text,index,limit){
+  const query=stems(text).filter(w=>!STOPWORDS.includes(w));
+  if(!query.length||!Array.isArray(index)||!index.length)return [];
+  const df={};
+  for(const stem of query)df[stem]=index.filter(item=>Array.isArray(item.stems)&&item.stems.includes(stem)).length;
+  const scored=index.map(item=>{
+    let raw=0;
+    for(const stem of query){
+      if(Array.isArray(item.stems)&&item.stems.includes(stem))raw+=df[stem]<=5?2.2:df[stem]<=12?1.6:1;
+    }
+    return {item,raw,score:raw*(item.weight||1)};
+  }).filter(x=>x.raw>=1.6).sort((a,b)=>b.score-a.score);
+  const seen=new Set(),out=[];
+  for(const {item,score} of scored){
+    const key=item.text.slice(0,60);
+    if(seen.has(key))continue;
+    seen.add(key);out.push({...item,score});
+    if(out.length>=(limit||2))break;
+  }
+  return out;
+}
+function knowledgeAnswer(text,ctx){
+  const c=ctx||{};
+  const index=c.knowledge||[];
+  /* Yalnızca ders/okul konularına cevap ver; havadan sudan sorulara uydurma cevap yok. */
+  if(!inSchoolDomain(text)&&!matchSubject(text,c.subjects))return null;
+  const hits=searchKnowledge(text,index,2);
+  if(!hits.length)return null;
+  const first=hits[0].text;
+  if(hits[0].kind==='topic')return `${first} İstersen kısa bir örnek çözebiliriz.`;
+  const intro=hits[0].kind==='quiz'?'Bunu bir örnekle açıklayayım: ':'Bunu biliyorum: ';
+  if(hits.length>1&&hits[1].kind==='quiz'&&hits[1].score>=hits[0].score*0.85&&first.length+hits[1].text.length<240)
+    return `${intro}${first} Bir de şu örnek var: ${hits[1].text}`;
+  return intro+first;
+}
+
 /* Groq/bağlantı hatasını öğrencinin anlayacağı tek cümleye çevirir. */
 function explainAiError(err){
   const raw=String(err&&err.message?err.message:err||'').toLowerCase();
@@ -398,7 +525,7 @@ function parseIntakeResult(raw,subjects,today){
   for(const item of items.slice(0,5)){
    if(!item||typeof item.title!=='string')continue;
    const title=item.title.trim().slice(0,120);
-   if(title.length<2)continue;
+   if(title.length<2||isNotHomework(title))continue;
    const subject=subjects&&subjects[item.subject]?item.subject:(matchSubject(title,subjects)||'diger');
    out.push({subject,title:title.charAt(0).toLocaleUpperCase('tr-TR')+title.slice(1),due});
   }
@@ -425,8 +552,8 @@ function sanitizeSettings(obj){
   const name=typeof o.name==='string'?o.name.trim().replace(/\s+/g,' ').slice(0,24):'';
   const voice=typeof o.voice==='string'&&o.voice.length<=120?o.voice:'';
   const rate=Number.isFinite(Number(o.rate))?Math.max(0.7,Math.min(1.4,Number(o.rate))):1.12;
-  return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy,voice,rate};
+  return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy,voice,rate,preferNetwork:o.preferNetwork!==false};
 }
-const api={classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,explainAiError,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
+const api={inSchoolDomain,knowledgeBrief,speechText,isNotHomework,buildKnowledgeIndex,searchKnowledge,knowledgeAnswer,classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,explainAiError,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
 if(typeof module!=='undefined')module.exports=api;else root.KampAIcore=api;
 })(typeof window!=='undefined'?window:globalThis);

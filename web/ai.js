@@ -21,6 +21,7 @@ let overlay = null;
 let callTimer = null;
 let autoTimer = null;
 const pendingAi = new Map();
+let knowledgeCache = null;
 
 function loadSettings() {
   try {
@@ -161,10 +162,14 @@ function renderPage() {
         <h2>Koçun sesi</h2>
         <p class="ai-copy">Telefonundaki Türkçe sesler arasından seç. “Sesi dene” ile hemen dinleyebilirsin.</p>
         <label class="form-field"><span>Ses</span><select id="ai-voice"><option value="">${settings.voice ? 'Seçili ses' : 'Varsayılan (en iyi ses)'}</option></select></label>
+        <label class="setting-row voice-row">
+          <div><strong>İnternetli doğal ses</strong><p>Çevrimiçiyken Google’ın daha doğal Türkçe sesini kullanır. Kapalıysa cihazdaki sade ses konuşur.</p></div>
+          <input type="checkbox" id="ai-network-voice" ${settings.preferNetwork !== false ? 'checked' : ''}>
+        </label>
         <label class="form-field"><span>Konuşma hızı: <strong id="ai-rate-label">${settings.rate.toFixed(2)}×</strong></span><input type="range" id="ai-rate" min="0.8" max="1.35" step="0.05" value="${settings.rate}"></label>
         <div class="ai-key-actions">
           <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
-          <button class="btn btn-white" data-ai="tts-settings">Telefon ses ayarları</button>
+          <button class="btn btn-white" data-ai="install-voice">Türkçe sesi indir</button>
         </div>
         <p class="ai-hint" id="ai-voice-hint">Daha doğal ses için telefonda Google Konuşma Hizmetleri’ni seç ve Türkçe ses paketini indir.</p>
       </section>
@@ -198,7 +203,7 @@ function fillVoiceOptions() {
 function applyVoiceConfig() {
   const b = bridge();
   if (b && typeof b.setVoiceConfig === 'function') {
-    try { b.setVoiceConfig(JSON.stringify({ voice: settings.voice || '', rate: settings.rate })); } catch {}
+    try { b.setVoiceConfig(JSON.stringify({ voice: settings.voice || '', rate: settings.rate, preferNetwork: settings.preferNetwork !== false })); } catch {}
   }
 }
 
@@ -406,6 +411,8 @@ function endCall() {
 
 function speak(text) {
   if (!call?.active || !text) return;
+  text = AIC.speechText(text);
+  if (!text) return;
   call.speaking = true;
   setStatus('Koç konuşuyor…');
   setCaption(text);
@@ -507,11 +514,18 @@ async function handleUser(text) {
 
   /* Okul çıkışı araması: yalnızca gerçekten ödev söylenmişse kaydet. */
   if (call.mode === 'intake' && !call.intakeDone) {
+    /* İkinci koruma: soru/sohbet cümlesi, model "ödev" dese bile kaydedilmez. */
+    if (intent === 'homework' && AIC.isNotHomework(text)) {
+      setStatus('Düşünüyor…');
+      speak(await answerChat(text, 'question'));
+      return;
+    }
     if (intent === 'homework') {
       let items = AIC.parseHomeworkUtterance(text, subjects(), today());
-      if (!items.length && hasKey()) {
-        try { items = await extractHomework(text); } catch { items = []; }
+      if (!items.length && hasKey() && !AIC.isNotHomework(text)) {
+        try { items = items.concat(await extractHomework(text)); } catch { items = []; }
       }
+      items = items.filter(it => it && !AIC.isNotHomework(it.title));
       if (items.length) {
         const saved = items.map(addHomework).filter(Boolean);
         call.intakeDone = true;
@@ -551,8 +565,14 @@ async function handleUser(text) {
   speak(reply);
 }
 
+function knowledgeIndex() {
+  if (knowledgeCache) return knowledgeCache;
+  try { knowledgeCache = AIC.buildKnowledgeIndex({ subjects: subjects(), quizzes: (window.KAMP_CONTENT || {}).quizzes || {} }); }
+  catch { knowledgeCache = []; }
+  return knowledgeCache;
+}
 function offlineContext() {
-  return { today: today(), homework, subjects: subjects(), exam: nextExam(), name: name() };
+  return { today: today(), homework, subjects: subjects(), exam: nextExam(), name: name(), knowledge: knowledgeIndex() };
 }
 
 /* Sorulara cevap: önce Groq, yoksa çevrimdışı akıllı yanıt. */
@@ -570,7 +590,12 @@ async function answerChat(text, intent) {
       return AIC.offlineAnswer(text, offlineContext());
     }
   }
-  return AIC.offlineAnswer(text, offlineContext());
+  const offline = AIC.offlineAnswer(text, offlineContext());
+  if (intent === 'question' || intent === 'help') {
+    const knowledge = AIC.knowledgeAnswer(text, offlineContext());
+    if (knowledge) return knowledge;
+  }
+  return offline;
 }
 
 /* Farklı cümle kalıpları için Groq'a ödev çıkarımı yaptırır. */
@@ -582,7 +607,7 @@ async function extractHomework(text) {
 }
 
 function buildUserMessages(userText) {
-  const base = { userText, history: call.messages.slice(0, -1), today: today(), homework, exams: [], tasks: [], name: name() };
+  const base = { userText, history: call.messages.slice(0, -1), today: today(), homework, exams: [], tasks: [], name: name(), knowledge: knowledgeIndex() };
   try {
     const app = A();
     base.exams = app.activeExams().slice(0, 4).map(e => ({ name: e.name, date: e.date, days: app.C.daysBetween(app.C.today(), e.date) }));
@@ -801,6 +826,12 @@ function onAiClick(btn) {
       } else A().toast('Bu cihazda ses motoru yok.');
       break;
     }
+    case 'install-voice': {
+      const b = bridge();
+      if (b && typeof b.openTtsSettings === 'function') { try { b.openTtsSettings(); } catch {} }
+      A().toast('Telefon → Dil ve giriş → Metin okuma → Google Konuşma Hizmetleri → Türkçe ses verisini indir.');
+      break;
+    }
     case 'tts-settings': {
       const b = bridge();
       if (b && typeof b.openTtsSettings === 'function') { try { b.openTtsSettings(); } catch {} }
@@ -848,6 +879,11 @@ function install() {
     if (e.target.id === 'ai-call-toggle') {
       settings.enabled = e.target.checked; saveSettings(); applyNativeSchedule(); A().render();
       A().toast(settings.enabled ? `Arama planı açıldı: ${AIC.scheduleSummary(settings.days)}.` : 'Okul çıkışı araması kapatıldı.');
+    }
+    if (e.target.id === 'ai-network-voice') {
+      settings.preferNetwork = e.target.checked;
+      saveSettings(); applyVoiceConfig(); A().render();
+      A().toast(settings.preferNetwork ? 'Doğal (internetli) ses açıldı.' : 'Cihazdaki çevrimdışı ses kullanılacak.');
     }
     if (e.target.id === 'ai-voice') {
       settings.voice = e.target.value || '';

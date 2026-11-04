@@ -130,26 +130,51 @@ public final class MainActivity extends Activity {
     }
     private void applyVoicePreference() {
         if (tts == null || !ttsReady) return;
-        String saved = getSharedPreferences("sinav-kampi", MODE_PRIVATE).getString("ttsVoice", "");
-        float rate = getSharedPreferences("sinav-kampi", MODE_PRIVATE).getFloat("ttsRate", 1.12f);
+        android.content.SharedPreferences prefs = getSharedPreferences("sinav-kampi", MODE_PRIVATE);
+        String saved = prefs.getString("ttsVoice", "");
+        float rate = prefs.getFloat("ttsRate", 1.12f);
+        boolean preferNetwork = prefs.getBoolean("ttsNetwork", true);
+        boolean connected = online(this);
         speechRate = Math.max(0.7f, Math.min(1.4f, rate));
         try {
             tts.setSpeechRate(speechRate);
             tts.setPitch(1.0f);
         } catch (Exception ignored) { }
         Voice chosen = null;
+        Voice bestOffline = null;
         try {
             for (Voice voice : tts.getVoices()) {
                 if (!"tr".equals(voice.getLocale().getLanguage())) continue;
+                boolean needsNetwork = voice.isNetworkConnectionRequired();
+                if (!needsNetwork) {
+                    if (bestOffline == null || voice.getQuality() > bestOffline.getQuality()) bestOffline = voice;
+                }
                 if (!saved.isEmpty() && saved.equals(voice.getName())) { chosen = voice; break; }
-                if (chosen == null) chosen = voice;
-                boolean better = voice.getQuality() > chosen.getQuality();
-                boolean sameQualityButOnline = voice.getQuality() == chosen.getQuality() && voice.isNetworkConnectionRequired() == online(this) && !chosen.isNetworkConnectionRequired();
-                if ((better || sameQualityButOnline) && (!voice.isNetworkConnectionRequired() || online(this))) chosen = voice;
+            }
+            /* Kayıtlı ses yoksa: internetliyse en yüksek kaliteli bulut sesi, değilse cihaz sesi. */
+            if (chosen == null && preferNetwork && connected) {
+                int best = -1;
+                for (Voice voice : tts.getVoices()) {
+                    if (!"tr".equals(voice.getLocale().getLanguage())) continue;
+                    if (!voice.isNetworkConnectionRequired()) continue;
+                    if (voice.getQuality() > best) { best = voice.getQuality(); chosen = voice; }
+                }
+            }
+            if (chosen == null) chosen = bestOffline;
+            if (chosen == null) {
+                for (Voice voice : tts.getVoices()) {
+                    if (!"tr".equals(voice.getLocale().getLanguage())) continue;
+                    chosen = voice;
+                    break;
+                }
             }
         } catch (Exception ignored) { }
         if (chosen != null) {
-            try { tts.setVoice(chosen); voiceName = chosen.getName(); voiceReady = true; } catch (Exception ignored) { }
+            try {
+                tts.setVoice(chosen);
+                voiceName = chosen.getName();
+                voiceReady = true;
+            } catch (Exception ignored) { }
         }
     }
     private void initTts() {
@@ -345,7 +370,8 @@ public final class MainActivity extends Activity {
                 JSONObject data = new JSONObject(json == null ? "{}" : json);
                 String voice = data.optString("voice", "");
                 float rate = (float) data.optDouble("rate", 1.12);
-                getSharedPreferences("sinav-kampi", MODE_PRIVATE).edit().putString("ttsVoice", voice).putFloat("ttsRate", Math.max(0.7f, Math.min(1.4f, rate))).apply();
+                boolean preferNetwork = data.optBoolean("preferNetwork", true);
+                getSharedPreferences("sinav-kampi", MODE_PRIVATE).edit().putString("ttsVoice", voice).putFloat("ttsRate", Math.max(0.7f, Math.min(1.4f, rate))).putBoolean("ttsNetwork", preferNetwork).apply();
                 voiceName = voice;
                 speechRate = Math.max(0.7f, Math.min(1.4f, rate));
                 runOnUiThread(MainActivity.this::applyVoicePreference);
@@ -353,7 +379,10 @@ public final class MainActivity extends Activity {
         }
         @JavascriptInterface public void previewVoice(String text) {
             final String sample = text == null || text.isEmpty() ? "Merhaba! Ben Kamp Koçu. Bugün hangi ödevleri verdiler?" : text;
-            runOnUiThread(() -> { if (ttsReady) { tts.stop(); speakNow(sample); } else { pendingSpeech = sample; initTts(); } });
+            runOnUiThread(() -> {
+                if (ttsReady) { applyVoicePreference(); tts.stop(); speakNow(sample); }
+                else { pendingSpeech = sample; initTts(); }
+            });
         }
         @JavascriptInterface public void openTtsSettings() {
             try { startActivity(new Intent("com.android.settings.TTS_SETTINGS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }

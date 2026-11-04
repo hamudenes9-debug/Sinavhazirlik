@@ -60,6 +60,11 @@ await page.locator('#call-input').fill('Sen kimsin?');await page.locator('#call-
 await page.waitForFunction(()=>document.querySelectorAll('#call-log .call-bubble.coach').length>=2);
 assert.match(await page.locator('#call-log').innerText(),/Kamp Koçu/);
 assert.equal(await page.locator('.hw-row').count(),1);
+await page.locator('#call-input').fill('EBOB nasıl bulunur');await page.locator('#call-form .call-send').click();
+await page.waitForFunction(()=>document.querySelectorAll('#call-log .call-bubble.coach').length>=3);
+const ebob=await page.locator('#call-log .call-bubble.coach').last().innerText();
+assert(/EBOB|örnek/i.test(ebob),'knowledge answer: '+ebob);
+assert.equal(await page.locator('.hw-row').count(),1);
 await page.locator('#call-input').fill('fen özeti ve türkçe kitap okuma');await page.locator('#call-form .call-send').click();
 await page.waitForFunction(()=>document.querySelectorAll('#call-log .call-bubble').length>=4);
 assert.match(await page.locator('#call-log').innerText(),/kaydettim/i);
