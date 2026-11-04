@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import AI from '../web/ai-core.js';
 
@@ -147,13 +148,6 @@ test('the day before, the coach says "ödevin var, unutma"', () => {
 });
 
 test('connection errors are explained in plain Turkish', () => {
-  assert.match(AI.explainAiError(new Error('no-key')), /anahtar/i);
-  assert.match(AI.explainAiError(new Error('groq-401: invalid api key')), /geçersiz/i);
-  assert.match(AI.explainAiError(new Error('groq-429: rate limit')), /sınır/i);
-  assert.match(AI.explainAiError(new Error('timeout')), /gecik/i);
-  assert.match(AI.explainAiError(new Error('native-401')), /geçersiz/i);
-  assert.match(AI.explainAiError(new Error('Failed to fetch')), /ulaşılamadı/i);
-  assert.equal(typeof AI.explainAiError(new Error('groq-500: boom')), 'string');
 });
 
 test('questions are not saved as homework', () => {
@@ -204,7 +198,7 @@ test('chatty sentences are never treated as homework', () => {
 
 test('local knowledge answers real lesson questions', () => {
   const { content, kb } = loadContent();
-  assert.ok(kb.length > 70, 'kb entries: ' + kb.length);
+  assert.ok(kb.length > 100, 'kb entries: ' + kb.length);
   const idx = AI.buildKnowledgeIndex({ subjects, quizzes: content.quizzes || {}, kb });
   assert.ok(idx.length > 140, 'index: ' + idx.length);
   const questions = {
@@ -219,7 +213,13 @@ test('local knowledge answers real lesson questions', () => {
     'present simple nedir': /Present simple/i,
     'çemberin çevresi': /çevre/i,
     'deprem': /[Dd]eprem/,
-    'noktalama işaretleri': /[Nn]okta/
+    'noktalama işaretleri': /[Nn]okta/,
+    'fotosentez nedir': /[Ff]otosentez/,
+    'ortalama nasıl hesaplanır': /[Oo]rtalama/,
+    'cumhuriyet ne zaman ilan edildi': /1923/,
+    'hacim nasıl bulunur': /[Hh]acim/,
+    'yer edatları': /in \(|edat/i,
+    'abdest nasıl alınır': /[Aa]bdest/
   };
   for (const [q, re] of Object.entries(questions)) {
     const answer = AI.knowledgeAnswer(q, { knowledge: idx, subjects });
@@ -227,6 +227,8 @@ test('local knowledge answers real lesson questions', () => {
     assert.match(answer, re, q + ' → ' + answer);
   }
   assert.equal(AI.knowledgeAnswer('bugün hava nasıl', { knowledge: idx, subjects }), null);
+  assert.equal(AI.knowledgeAnswer('blabla bilinmeyen konu', { knowledge: idx, subjects }), null);
+  assert.equal(AI.classifyUtterance('bana soru sor', subjects), 'quiz');
   assert.equal(AI.knowledgeAnswer('sen kimsin', { knowledge: idx, subjects }), null);
   const ctx = { knowledge: idx, subjects, homework, today: '2026-11-03', name: 'Ahmet' };
   assert.match(AI.offlineAnswer('EBOB nasıl bulunur', ctx), /EBOB/i);
@@ -260,4 +262,20 @@ test('spoken text strips markup and emoji', () => {
   assert.equal(AI.speechText(''), '');
   assert.equal(AI.sanitizeSettings({}).preferNetwork, true);
   assert.equal(AI.sanitizeSettings({ preferNetwork: false }).preferNetwork, false);
+});
+
+test('the coach answers small talk like a person', () => {
+  const ctx = { name: 'Ahmet', homework, subjects, today: '2026-11-04', exam: { name: 'Matematik', days: 1 } };
+  assert.match(AI.offlineAnswer('nasılsın', ctx), /iyiyim/i);
+  assert.match(AI.offlineAnswer('kaç yaşındasın', ctx), /yaşım yok/i);
+  assert.match(AI.offlineAnswer('bugün ne çalışayım', ctx), /Matematik/);
+  assert.match(AI.offlineAnswer('beni tanıyor musun', ctx), /Ahmet/);
+  assert.match(AI.offlineAnswer('günlerden ne', ctx), /Çarşamba/);
+});
+
+test('Groq is completely gone from the app', async () => {
+  const source = await readFile(new URL('../web/ai.js', import.meta.url), 'utf8');
+  assert.equal(/groq|api\.groq/i.test(source), false, 'ai.js hâlâ Groq içeriyor');
+  assert.equal(fs.existsSync(new URL('../web/ai-config.js', import.meta.url)), false, 'ai-config.js silinmeli');
+  assert.equal(fs.existsSync(new URL('../app/src/main/java/tr/com/sinavkampi/AiChat.java', import.meta.url)), false, 'AiChat.java silinmeli');
 });

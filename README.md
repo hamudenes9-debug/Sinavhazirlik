@@ -2,18 +2,18 @@
 
 6. sınıf sınav hazırlık uygulaması. Türkiye saatiyle kişisel sınav takvimi, 12 günlük kamp, görev takibi, 25 dakikalık odak sayacı, 68 soruluk açıklamalı testler, 15 çevrimdışı PDF ve **ödev için okul çıkışı arayan sesli yapay zekâ koçu** içerir.
 
-## Sürüm 1.7.1
+## Sürüm 1.8.0
 
 - **Kamp Koçu:** günlük çıkış saatine göre arama (Pzt 16:00, diğer günler 15:10 gibi), sesli ödev sorma/kaydetme ve teslimden bir gün önce hatırlatma.
 - **Uygulama içi bilgi motoru:** konu özetleri ve soru açıklamalarından anahtarsız yanıt (EBOB, bölünebilme, olasılık, kültür, kıtalar…). Ders dışı sorularda uydurmaz.
 - **Çift korumalı ödev kaydı:** soru/sohbet cümlesi model “ödev” dese bile kaydedilmez.
 - **Doğal ses paketi:** koçun sabit cümleleri uygulamayla gelen 10 doğal Türkçe kayıtla okunur (cihaz sesi gerekmez); hız 0.7–1.4, ses seçimi ve “Sesi dene”.
-- **79 maddelik bilgi bankası + hesap makinesi:** “EBOB nasıl bulunur”, “hücre nedir”, “12 × 8 kaç eder”, “80’in %25’i” gibi sorular anahtarsız yanıtlanır.
-- **Groq bağlantısı:** istek APK’da doğrudan Android üzerinden gider (CORS engeli yok); “Bağlantıyı test et” gerçek sonucu gösterir.
+- **115 maddelik bilgi bankası + hesap makinesi:** “EBOB nasıl bulunur”, “hücre nedir”, “12 × 8 kaç eder”, “80’in %25’i” gibi sorular anahtarsız yanıtlanır.
+- **Test modu:** “bana soru sor” deyince 68 sorudan birini sorar, cevabını değerlendirir.
+- **Sesli arama:** yazma yok; koç seni ararken zil sesi çalar.
 - **Akıllı koç:** soruları ödev sanmaz, “Sen kimsin?” gibi sorulara cevap verir, ödevleri niyetine göre kaydeder.
 - **Ses seçimi:** Google Türkçe ses motoru, en iyi ses, hız ayarı ve “Sesi dene”.
 - Sesli brifing, mikrofonla/yazarak sohbet, “ödevimi yaptım” işaretleme.
-- Groq bağlantısı: anahtar cihazda veya `GROQ_API_KEY` depo sırrıyla gömülü. Ayrıntılar: [AI-KOC.md](AI-KOC.md).
 - Proje: **sinavkam**
 - Google, GitHub ve e-posta/şifre ile giriş.
 - Uygulama içinde Firebase bağlantı ayarı yok; proje arka planda hazır.
@@ -25,7 +25,7 @@
 
 APK’lar `keystore/sinav-kampi.p12` ile **sabit imzayla** üretilir; böylece yeni sürüm eskisinin üzerine kurulabilir. Depo herkese açık olduğu için bu anahtar gizli değildir; mağaza dağıtımı için kendi anahtarını kullan.
 
-**Canlı kullanım için proje sahibinin Email/Password, Firestore ve güvenlik kurallarını etkinleştirmesi gerekir.** Yapay zekâ koçu için Groq anahtarı gerekir; anahtar depoya yazılmaz. Ayrıntılı adımlar: [FIREBASE.md](FIREBASE.md).
+**Canlı kullanım için proje sahibinin Email/Password, Firestore ve güvenlik kurallarını etkinleştirmesi gerekir.** Koç tamamen cihazda çalışır, API anahtarı gerekmez. Ayrıntılı adımlar: [FIREBASE.md](FIREBASE.md).
 
 ## Geliştirme
 
@@ -35,7 +35,7 @@ npm run build
 npm start
 ```
 
-Önizleme portu 3000'dir. Yapay zekâ koçunu yerelde denemek için: `GROQ_API_KEY=gsk_... npm start`. Web kaynakları `web/`, Firebase istemci kodu `src/cloud.js`, Android kodu `app/` içindedir. `app/src/main/assets/www/` derleme çıktısıdır; kaynak değişikliklerinden sonra `npm run build` çalıştırın.
+Önizleme portu 3000'dir. Web kaynakları `web/`, Firebase istemci kodu `src/cloud.js`, Android kodu `app/` içindedir. `app/src/main/assets/www/` derleme çıktısıdır; kaynak değişikliklerinden sonra `npm run build` çalıştırın.
 
 PDF içerikleri `scripts/make_pdfs.py` ile üretilir. Matematik ve Sosyal paylaşılan konu dağılımlarına dayanır; diğerleri genel tekrardır. Uygulama MEB veya okulun resmî uygulaması değildir.
 

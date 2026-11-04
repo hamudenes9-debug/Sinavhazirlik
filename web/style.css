@@ -125,6 +125,8 @@ body.call-open{overflow:hidden}
 .call-bubble.live{display:none}
 .call-bubble.note{align-self:center;background:#c9a86a1f;border:1px dashed #c9a86a55;color:#e5d3ad;font-size:10px}
 .call-input{display:flex;gap:8px;width:min(560px,100%);margin:10px auto 0;position:relative;z-index:1}
+.call-voice-note{display:flex;align-items:center;justify-content:center;gap:8px;width:min(560px,100%);margin:10px auto 0;padding:11px 16px;border-radius:22px;background:#ffffff0f;border:1px solid #ffffff1f;color:#cfe0c4;font-size:12px;position:relative;z-index:1}
+.call-voice-note .icon{width:16px;height:16px}
 .call-input input{flex:1;min-width:0;background:#ffffff10;border:1px solid #ffffff1f;border-radius:24px;padding:12px 18px;color:#f4f8ee;font-size:12px;outline:none}
 .call-input input::placeholder{color:#95a98c}
 .call-input input:focus{border-color:#a9c197}

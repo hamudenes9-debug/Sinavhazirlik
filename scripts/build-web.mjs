@@ -4,12 +4,6 @@ import {build} from 'esbuild';
 const target='app/src/main/assets/www';
 await build({entryPoints:['src/cloud.js'],bundle:true,minify:true,format:'iife',target:['chrome90'],outfile:'web/firebase.js',legalComments:'inline'});
 await rm(target,{recursive:true,force:true});await mkdir(target,{recursive:true});await cp('web',target,{recursive:true});
-// Groq anahtarı depoya yazılmaz: yalnızca derleme ortamından APK paketine gömülür.
-const aiKey=process.env.GROQ_API_KEY||'', aiProxy=process.env.GROQ_PROXY_URL||'';
-if(aiKey||aiProxy){
- await writeFile(target+'/ai-config.js',`window.KAMP_AI_CONFIG=${JSON.stringify({key:aiKey,proxy:aiProxy,model:process.env.GROQ_MODEL||'llama-3.3-70b-versatile'})};\n`);
- console.log('Groq bağlantısı pakete eklendi'+(aiProxy?' (proxy üzerinden)':'')+'.');
-}
 for(const [font,weights] of [['dm-sans',[400,500,600,700]],['manrope',[500,600,700,800]]]){
  await mkdir(`${target}/fonts`,{recursive:true});
  for(const weight of weights)for(const subset of ['latin','latin-ext']){
@@ -24,6 +18,6 @@ let faces='';for(const [font,family,weights] of [['dm-sans','DM Sans',[400,500,6
 await writeFile(target+'/style.css',faces+css);
 const files=[];async function walk(dir,prefix=''){for(const e of await readdir(dir,{withFileTypes:true})){const p=prefix+e.name;if(e.isDirectory())await walk(join(dir,e.name),p+'/');else if(e.name!=='sw.js')files.push(p);}}
 await walk(target);
-const sw=(await readFile(target+'/sw.js','utf8')).replace('sinav-kampi-v1','sinav-kampi-v1.7.1').replace('const ASSETS=[','const ASSETS=[...'+JSON.stringify(files)+',');
+const sw=(await readFile(target+'/sw.js','utf8')).replace('sinav-kampi-v1','sinav-kampi-v1.8.0').replace('const ASSETS=[','const ASSETS=[...'+JSON.stringify(files)+',');
 await writeFile(target+'/sw.js',sw);
 console.log('Offline web assets and bundled Firebase SDK ready.');

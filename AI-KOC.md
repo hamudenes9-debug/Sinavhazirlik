@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.7.1**: koçun sabit cümleleri artık **uygulamayla gelen doğal Türkçe ses kayıtlarıyla** okunur; cihazın robotik sesi yalnızca serbest cevaplarda kullanılır. **79 maddelik 6. sınıf bilgi bankası** ve **hesap makinesi** eklendi, böylece anahtar olmadan da ders soruları yanıtlanır. Sohbet cümleleri **üç katmanda** süzülür ve hiçbir koşulda ödev olarak kaydedilmez.
+Sürüm **1.8.0** ile koç tamamen **cihazın içinde** çalışır: **115 maddelik 6. sınıf bilgi bankası**, **233 kayıtlık arama dizini**, gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq/API anahtarı tamamen kaldırıldı; hiçbir veri sunucuya gitmiyor.
 
 ## Akıllı davranış
 
@@ -16,11 +16,14 @@ Koç söyleneni önce **anlar**, sonra kaydeder:
 | “Bugün ödev yok” | Kaydetmez, sınav tekrarı önerir |
 | “EBOB nasıl bulunur?” | Uygulamadaki konu özeti ve soru açıklamasından örnekli yanıt verir |
 | “Bana bir şaka yap” | Kısa bir şaka yapar, sonra derse döner |
+| “Bana soru sor” | Test sorusu sorar, cevabı değerlendirir, doğru cevabı açıklar |
+| “Bugün ne çalışayım?” | Sınav tarihi ve bekleyen ödevlere göre üç adımlı plan verir |
+| “Nasılsın / kaç yaşındasın?” | Doğal sohbet cevabı verir |
 | “Bugün hava nasıl?” | Ders dışı soruya uydurma cevap vermez, nazikçe konuyu ödeve getirir |
 
-Sohbet cümleleri **üç ayrı katmanda** süzülür: (1) niyet katmanı, (2) model/Groq çıktısındaki başlıkların doğrulanması, (3) depolama katmanı (`addHomework`). Model “ödev” dese bile “Sen kimsin?” gibi bir cümle listeye eklenmez. Engellenen cümlede ekranda “Bu bir sohbet sorusu; ödev olarak kaydetmedim.” bilgisi çıkar.
+Sohbet cümleleri **üç ayrı katmanda** süzülür: (1) niyet katmanı, (2) ayrıştırılan başlıkların doğrulanması, (3) depolama katmanı (`addHomework`). “Sen kimsin?” gibi bir cümle hiçbir koşulda listeye eklenmez. Engellenen cümlede ekranda “Bu bir sohbet sorusu; ödev olarak kaydetmedim.” bilgisi çıkar.
 
-Groq bağlantısı varsa anlama katmanı daha esnek çalışır; yoksa da **cihazdaki bilgi motoru** devreye girer.
+Anlama ve cevap üretme tamamen **cihazdaki motor** tarafından yapılır; internet veya anahtar gerekmez.
 
 ## Ne yapıyor?
 
@@ -34,39 +37,43 @@ Groq bağlantısı varsa anlama katmanı daha esnek çalışır; yoksa da **ciha
 - **Sesli sohbet:** mikrofonla veya yazarak cevap verilir. Koç cevabı sesli okur.
 - **Ödev işaretleme:** “Matematik ödevini yaptım” denince o ödev tamamlandı olarak işaretlenir.
 - **Yardım:** “Fen ödevinde takıldım” denince konu hatırlatılır ve küçük bir ipucu verilir.
-- **Çevrimdışı bilgi motoru:** konu özetleri, 68 sorunun açıklaması ve **79 maddelik bilgi bankası** tek bir aranabilir dizinde toplanır (≈200 kayıt). “EBOB nasıl bulunur”, “hücre nedir”, “present simple”, “kültür nedir”, “çemberin çevresi” gibi sorulara anahtar olmadan cevap verir. Türkçe ekler kök eşleştirmesiyle çözülür; ders dışı sorularda tahmin yürütmez.
+- **Çevrimdışı bilgi motoru:** konu özetleri, 68 sorunun açıklaması ve **115 maddelik bilgi bankası** tek bir aranabilir dizinde toplanır (**233 kayıt**). “EBOB nasıl bulunur”, “hücre nedir”, “present simple”, “kültür nedir”, “çemberin çevresi” gibi sorulara anahtar olmadan cevap verir. Türkçe ekler kök eşleştirmesiyle çözülür; ders dışı sorularda tahmin yürütmez.
 - **Hesap makinesi:** “12 × 8 kaç eder”, “144 / 12”, “80’in %25’i”, “2 üssü 5” gibi işlemleri gerçekten hesaplar ve sonucu söyler.
-- **Çevrimiçi:** internet veya anahtar olmadan da ödev/sınav bilgileri sesli söylenir; Groq anahtarı bağlıysa yanıtlar daha esnek olur ve uygulama içeriği modele bağlam olarak verilir.
+- **Test modu:** “bana soru sor” dediğinde uygulamadaki 68 sorudan birini seçer, seçenekleri sesli okur, cevabını değerlendirir ve doğrusunu açıklar. “Bir tane daha sorayım mı?” sorusuna “evet” dersen devam eder.
+- **Plan:** “bugün ne çalışayım” dediğinde yaklaşan sınavı ve bekleyen ödevleri sıraya koyar.
 
 > **Önemli:** Bu “arama” gerçek telefon araması değildir. Koç uygulama içinde sesli arama ekranı açar; telefon faturası, numara paylaşımı veya arama izni gerekmez.
 
-## Groq (yapay zekâ) bağlantısı
+## Cihaz içi beyin (Groq kaldırıldı)
 
-**1.5.0’da bağlantı APK içinde doğrudan Android üzerinden yapılır.** WebView’dan `fetch` CORS engeline takıldığı için istek Java tarafına taşındı; artık “internet yok” hatası yerine gerçek sebep yazılır (geçersiz anahtar, dakika sınırı, zaman aşımı gibi).
+Koç artık **hiçbir dış servise bağlanmıyor**. `1.8.0` ile Groq istemcisi, API anahtarı alanı, proxy ve ilgili izinler tamamen kaldırıldı. Avantajları:
 
-> **Anahtar neden gömülü değil?** Depo herkese açık ve GitHub, anahtarı dosyaya yazıp göndermeyi **push protection** ile engelliyor (denendi, reddedildi). Anahtarı iki şekilde bağlayabilirsin: uygulamada bir kez gir (en hızlı) veya `GROQ_API_KEY` deposu sırrı ekleyip APK’yı yeniden derlet.
+- Anahtar, internet veya hesap gerekmez; uçak modunda da ders sorusuna cevap verir.
+- Ses ve metin cihazdan çıkmaz; gizlilik en üst düzeyde.
+- Yanıt gecikmesi yok; cevaplar anında gelir.
 
-Ödev & AI koç ekranındaki **Bağlantıyı test et** düğmesi gerçek bir Groq isteği atar ve sonucu yeşil/kırmızı kutuda gösterir.
+Nasıl “zeki” oluyor?
 
-Anahtar sırası: uygulamada yazılan anahtar → `web/ai-config.js` içindeki varsayılan (boş) → derleme sırasında `GROQ_API_KEY`. Yollar:
+1. **Bilgi bankası:** 115 kısa, doğru tanım (matematik, fen, Türkçe, sosyal, İngilizce, din).
+2. **Konu özetleri + 68 soru açıklaması:** toplam 233 kayıtlık arama dizini.
+3. **Türkçe kök eşleştirme:** ekler (EBOB/EBOB’u, hücre/hücrenin) aynı köke indirgenir; nadir kelimeler zorunlu, genel kelimeler ağırlıklı sayılır.
+4. **Hesap makinesi:** dört işlem, yüzde ve üs gerçekten hesaplanır.
+5. **Bağlam:** ödevler, teslim tarihleri ve sınav takvimi her cevaba katılır.
 
-1. **Uygulama içinde değiştirmek:** Ödev & AI koç → “Yapay zekâ anahtarı” alanına `gsk_...` yaz, **Kaydet**. Bu anahtar gömülü anahtarın önüne geçer ve yalnızca o cihazda saklanır.
-2. **GitHub deposu sırrı olarak derlemek:** Depo → Settings → Secrets and variables → Actions → `GROQ_API_KEY` ekle (isteğe bağlı `GROQ_PROXY_URL`, `GROQ_MODEL`). APK derlenirken anahtar `ai-config.js` içine gömülür. Depo herkese açık olduğu için **APK içine gömülen anahtar paylaşılabilir**; bu yolu yalnızca senin cihazında kurulum yapılacaksa kullan ve anahtarı arada bir yenile.
-3. **Proxy:** `GROQ_PROXY_URL` verilirse anahtar cihaza hiç inmez; istekler kendi sunucundan Groq’a iletilir. Sunucu `{messages:[...]}` alıp `{reply:"..."}` veya OpenAI biçiminde yanıt döndürmelidir.
+Ders dışı bir soruya uydurma cevap vermez: eşleşme yoksa “bunu notlarımdan çıkaramadım” der ve konuyu sorar.
 
-Yerel önizleme: `GROQ_API_KEY=gsk_... npm start` komutu anahtarı yalnızca çalışan sunucuya verir.
+## Sesli arama: yazma yok, zil var
 
-### Anahtarını paylaştıysan
+- Arama ekranında **yazma alanı yoktur**; koç yalnızca mikrofonla dinler ve sesli cevap verir.
+- Koç seni aradığında (çıkış araması ve teslim hatırlatması) önce **zil sesi** çalar (`voice/ring.wav`, uygulamayla gelir), ardından konuşmaya başlar.
+- Yazılı döküm yine ekranda görünür; sesi kapatsan bile konuşulanları okuyabilirsin.
 
-Depo herkese açık olduğu için anahtarı dosyaya yazmak GitHub tarafından engellenir. Anahtarı yalnızca uygulamada gir; yeni anahtar oluşturursan eskisini Groq konsolundan sil.
-
-### Ses hızı ve kalitesi
+## Ses hızı ve kalitesi
 
 - Uygulama **Google Konuşma Hizmetleri** motorunu (kuruluysa) kullanır; cihazın en iyi Türkçe sesi seçilir.
-- “Koçun sesi” kartından ses ve **0.8–1.35×** hız seçilir, “Sesi dene” ile dinlenir.
-- Ses motoru uygulama açılırken hazırlanır; ilk cümlenin gecikmesi azalır.
+- Koçun sabit cümleleri **10 doğal Türkçe kayıttan** çalınır; cihazın robotik sesi bu cümlelerde duyulmaz.
+- “Koçun sesi” kartından ses, **doğal ses paketi**, **internetli doğal ses** ve **0.8–1.35×** hız seçilir, “Sesi dene” ile dinlenir.
 - Daha iyi ses için telefonda **Ayarlar → Dil ve giriş → Metin okuma** bölümünden Google Konuşma Hizmetleri’ni ve Türkçe ses paketini güncelle.
-- Mikrofonla konuşurken koç cevabı 3 kısa cümleyle sınırlar.
 
 ## Android izinleri
 
@@ -74,10 +81,10 @@ Depo herkese açık olduğu için anahtarı dosyaya yazmak GitHub tarafından en
 | --- | --- |
 | `POST_NOTIFICATIONS` | Arama bildirimi |
 | `SCHEDULE_EXACT_ALARM` | Günlük çıkış saatini dakikası dakikasına planlamak |
-| `RECORD_AUDIO` | Mikrofonla cevap vermek (izin verilmezse yazıyla devam edilir) |
-| `INTERNET` | Groq yanıtı; yoksa çevrimdışı brifing |
+| `RECORD_AUDIO` | Mikrofonla cevap vermek (arama sesle yürür) |
+| `INTERNET` | Firebase hesabı ve bulut eşitleme (koç internet olmadan da çalışır) |
 
-Mikrofon ve konuşma tanıma cihazda yoksa koç yazılı sohbete geçer. Türkçe ses (TTS) yoksa metin yine görünür.
+Mikrofon ve konuşma tanıma cihazda yoksa koç yine konuşur ve yazılı dökümü gösterir; cevap girişi için mikrofon gerekir. Türkçe ses (TTS) yoksa metin yine görünür.
 
 ## Telefon kısıtları
 
@@ -85,19 +92,19 @@ Mikrofon ve konuşma tanıma cihazda yoksa koç yazılı sohbete geçer. Türkç
 - “Tam alarm” izni verilmezse arama birkaç dakika gecikebilir; bildirim yine gelir.
 - Her gün en fazla 12 alarm planlanır; uygulamayı açtığında ve tekrar aradığında plan kendini yeniler.
 - Teslim hatırlatması yalnızca 18:00’den önce uygulama açıldığında planlanır.
-- İnternet yoksa koç yalnızca cihazdaki ödev/sınav bilgilerini söyler.
+- İnternet olmadan da koç tüm ders sorularını yanıtlar; yalnızca bulut eşitleme ve giriş çalışmaz.
 
 ## Gizlilik
 
-- Ödev listesi, arama saati ve anahtar cihazda kalır; Firebase’e eşitlenmez.
-- Anahtar varsa **ödev başlıkları ve o anki konuşma** Groq’a gönderilir. Anahtar yoksa internet isteği yapılmaz.
-- Anahtar silinebilir: aynı ekranda **Sil** düğmesi.
+- Ödev listesi, arama saati ve ses tercihleri cihazda kalır; Firebase’e eşitlenmez.
+- Koç **hiçbir dış servise istek atmaz**: ne metin ne ses cihazdan çıkar. Tek istisna, isteğe bağlı bulut eşitleme ve giriş.
+- Uygulamayı kaldırmak cihazdaki ödev listesini de siler; Ayarlar → **Yedeği indir** ile JSON yedek alabilirsin.
 
 ## Testler
 
 ```bash
-npm test                 # çekirdek + koç mantığı (30 test)
-npm run test:browser     # masaüstü/mobil, arama ekranı, ödev ekleme
+npm test                 # çekirdek + koç mantığı (42 test)
+npm run test:browser     # masaüstü/mobil, sesli arama, test sorusu, ödev ekleme
 ```
 
-Tarayıcı testi Groq çağrısını engelleyerek çevrimdışı yanıt yolunu da doğrular.
+Tarayıcı testi yazma alanının kaldırıldığını, zil sesinin yüklendiğini, “Sen kimsin?” sorusunun ödev olarak kaydedilmediğini ve “bana soru sor” test akışını doğrular.

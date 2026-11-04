@@ -182,7 +182,7 @@
   * türkçe kitap okuma" → üç ödev. Teslim tarihi varsayılan: sonraki okul günü. */
  const QUESTION_STARTS=['kim','kimsin','nesin','ne','neden','nicin','nasil','nerede','nereye','hangi','kac','misin','misiniz','musun','muyum','mi','mu','misin','anlat','soyle','biliyor musun'];
 const HOMEWORK_HINTS=['odev','odevler','odevim','odevlerim','odevini','calisma kagidi','calisma','test','kitap','okuma','proje','sunum','arastir','arastirma','yaz','coz','sayfa','etkinlik','poster','maket','deneme','defter','fotokopi','kitapcik','ozet','rapor','soru','problem','alistirma','tekrar','ezber','sozluk','kelime','yazma','anlatim','cikar'];
-const IDENTITY_PATTERNS=['sen kimsin','kimsin','sen nesin','nesin sen','adin ne','ismin ne','sen bir robot','robot musun','yapay zeka misin','yapay zekamisin','gercek misin','insan misin','kac yasindasin','nerede yasiyorsun'];
+const IDENTITY_PATTERNS=['sen kimsin','kimsin','sen nesin','nesin sen','adin ne','ismin ne','sen bir robot','robot musun','yapay zeka misin','yapay zekamisin','gercek misin','insan misin','nerede yasiyorsun'];
 function isQuestionText(text){
   const raw=String(text||'').trim();
   if(!raw)return false;
@@ -321,6 +321,7 @@ function classifyUtterance(text,subjects){
   if(!raw)return 'chat';
   if(IDENTITY_PATTERNS.some(p=>n.includes(p)))return 'identity';
   if(/ne yapabilirsin|neler yapabilirsin|nasil yardim|ne ise yararsin/.test(n))return 'capabilities';
+  if(/bana soru sor|beni yokla|beni sina|test et|quiz|soru sorar misin/.test(n))return 'quiz';
   if(hasWord(n,DONE_WORDS))return 'done';
   if(hasWord(n,HELP_WORDS)&&(matchSubject(raw,subjects)||/odev|soru|konu/.test(n)))return 'help';
   if(noHomework(raw))return 'no-homework';
@@ -349,12 +350,31 @@ function offlineAnswer(text,ctx){
   const c=ctx||{},subjects=c.subjects||{},today=c.today||'';
   const intent=classifyUtterance(text,subjects);
   if(intent==='identity')return identityAnswer(c);
+  if(intent==='quiz')return 'Hemen soruyorum. Cevabını söyle, birlikte bakalım.';
   if(intent==='capabilities')return 'Ödevlerini sesli olarak kaydediyorum, teslimden önce seni arıyorum, sınav takvimini söylüyorum ve ders sorularına ipucu veriyorum. İstersen “matematik ödevini yaptım” de, işaretleyeyim.';
   if(/kac odev|odevlerim ne|odev listesi|odevlerim neler/.test(norm(text))){
    const pending=pendingHomework(c.homework);
    if(!pending.length)return 'Şu an bekleyen ödevin yok. Yeni ödev verirlerse söyle, kaydedeyim.';
    return `${pending.length} ödevin bekliyor: ${pending.slice(0,4).map(h=>h.title).join(', ')}.`;
   }
+  const n=norm(text);
+  if(/nasilsin|naber|ne haber/.test(n))return `${c.name?c.name+', ':''}iyiyim, teşekkürler! Sen nasılsın? Hazırsan bugünkü ödevleri konuşalım.`;
+  if(/kac yasindasin|yasin kac|kac yasinda/.test(n))return 'Ben bir yapay zekâ koçuyum; insanlar gibi yaşım yok. Ama 6. sınıf konularını seninle birlikte çalışacak kadar biliyorum.';
+  if(/ne yapiyorsun|napiyorsun|ne yaptigin/.test(n))return 'Senin ödevlerini ve sınavlarını takip ediyorum. Şu an seninle konuşuyorum; istersen bir ders sorusu sor ya da “bana soru sor” de.';
+  if(/beni taniyor musun|benim adim|adimi biliyor/.test(n)){
+   const p=pendingHomework(c.homework).length;
+   return `${c.name?`Evet, adın ${c.name}. `:'Adını henüz bilmiyorum; “Koç sana nasıl hitap etsin?” alanına yazabilirsin. '}${p?`${p} ödevin bekliyor.`:'Şu an bekleyen ödevin yok.'}`;
+  }
+  if(/saat kac/.test(n))return `Şu an ${formatClock(Date.now())}.`;
+  if(/gunlerden ne|hangi gun|bugun gunlerden/.test(n)){
+   const d=new Date(Date.now()+ZONE_OFFSET_MIN*60000);
+   return `Bugün ${WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}.`;
+  }
+  if(/hangi dersleri biliyor|hangi dersler|hangi dersleri/.test(n)){
+   const names=Object.values(subjects).map(s2=>s2.name).filter(Boolean);
+   return names.length?`${names.join(', ')} derslerinde konu anlatımı ve örnek soru biliyorum.`:'Şu an ders listesi yüklenmedi.';
+  }
+  if(/ne calisayim|ne calissam|calisma plani|nereden baslayayim|plan ver|bugun ne yapsam/.test(n))return studyPlan(c);
   if(intent==='ack')return pendingHomework(c.homework).length?`Tamam! Sırada ${pendingHomework(c.homework)[0].title} var. Başlayalım mı?`:'Tamam! Bir şey olursa buradayım.';
   if(intent==='greeting')return `${c.name?c.name+', ':''}merhaba! Bugünkü ödevleri konuşalım mı?`;
   if(intent==='question'&&/sinav/.test(norm(text))&&c.exam)return `Sıradaki sınavın ${c.exam.name}. ${c.exam.days===0?'Bugün':c.exam.days===1?'Yarın':c.exam.days+' gün sonra'}.`;
@@ -388,7 +408,7 @@ function offlineAnswer(text,ctx){
    return `Bekleyen ${pending.length} ödevin var: ${names}. ${subjectTip(subjects,pending[0].subject)} Hangisiyle başlayalım?`;
   }
   if(isGreeting(text))return 'Merhaba! Bugünkü ödevlerin tamam görünüyor. Kısa bir sınav tekrarı yapalım mı?';
-  return 'Bu konuyu kendi notlarımdan bulamadım. Ödev & AI koç ekranındaki anahtarı bağlarsan daha geniş cevap verebilirim. Şimdilik hangi derse çalışmak istediğini söyle.';
+  return 'Bunu kendi notlarımdan çıkaramadım. Dersini ve konuyu biraz daha açık söyle (örnek: “fen, sindirim sistemi”), hemen bakayım.';
 }
 /* Aritmetik sorularını gerçekten hesaplar: “12 x 8 kaç eder?”, “80'in %25'i?”, “2 üssü 5”. */
 function evalExpression(expr){
@@ -450,6 +470,27 @@ function solveMath(text){
   if(value===null)return null;
   const pretty=m[1].replace(/\s+/g,'').replace(/\*/g,' × ').replace(/\//g,' ÷ ');
   return `${pretty} = ${fmtNum(value)}.`;
+}
+
+/* Sınav tarihi ve bekleyen ödevlere göre üç adımlı kısa plan. */
+function studyPlan(ctx){
+  const c=ctx||{};
+  const steps=[];
+  const exam=c.exam;
+  if(exam){
+    const days=Number(exam.days)||0;
+    const when=days===0?'bugün':days===1?'yarın':`${days} gün sonra`;
+    steps.push(`${exam.name} sınavı ${when}: 15 dakika konu tekrarı + 10 soru.`);
+  }
+  const pending=pendingHomework(c.homework);
+  if(pending.length){
+    const first=pending[0];
+    const sub=(c.subjects&&c.subjects[first.subject]&&c.subjects[first.subject].name)||'';
+    steps.push(`Bekleyen ödev: ${first.title}${sub?` (${sub})`:''} — 20 dakikada bitir.`);
+  }
+  if(!steps.length)steps.push('Bugün 20 dakika matematik, 15 dakika Türkçe tekrarı yeterli.');
+  if(steps.length<3)steps.push('Arada 5 dakika mola ver, su iç; sonra kalan ödevlere dön.');
+  return 'Bugünkü planım: '+steps.slice(0,3).map((s2,i)=>`${i+1}) ${s2}`).join(' ')+' Başlayalım mı?';
 }
 
 /* Sesli okumak için metni sadeleştirir (emoji, markdown, uzun parantezler). */
@@ -526,13 +567,18 @@ function searchKnowledge(text,index,limit){
   if(!query.length||!Array.isArray(index)||!index.length)return [];
   const df={};
   for(const stem of query)df[stem]=index.filter(item=>Array.isArray(item.stems)&&item.stems.includes(stem)).length;
+  const rare=query.filter(stem=>(df[stem]||0)<=2);
+  const need=query.length>=3?0.6:0.5;
   const scored=index.map(item=>{
-    let raw=0;
+    let raw=0,matched=0;
+    const stemsArr=Array.isArray(item.stems)?item.stems:[];
     for(const stem of query){
-      if(Array.isArray(item.stems)&&item.stems.includes(stem))raw+=df[stem]<=5?2.2:df[stem]<=12?1.6:1.2;
+      if(stemsArr.includes(stem)){matched++;raw+=df[stem]<=5?2.2:df[stem]<=12?1.6:1.2;}
     }
-    return {item,raw,score:raw*(item.weight||1)};
-  }).filter(x=>x.raw>=(query.length===1?1.2:1.6)).sort((a,b)=>b.score-a.score);
+    const covers=matched/query.length>=need;
+    const rareOk=rare.every(stem=>stemsArr.includes(stem));
+    return {item,raw,score:raw*(item.weight||1),ok:covers&&rareOk&&raw>=(query.length===1?1.2:1.6)};
+  }).filter(x=>x.ok).sort((a,b)=>b.score-a.score);
   const seen=new Set(),out=[];
   for(const {item,score} of scored){
     const key=item.text.slice(0,60);
@@ -561,18 +607,7 @@ function knowledgeAnswer(text,ctx){
 }
 
 /* Groq/bağlantı hatasını öğrencinin anlayacağı tek cümleye çevirir. */
-function explainAiError(err){
-  const raw=String(err&&err.message?err.message:err||'').toLowerCase();
-  const status=(raw.match(/(?:groq|native|proxy)-(\d{3})/)||[])[1];
-  if(raw.includes('no-key'))return 'Yapay zekâ anahtarı yok. Ödev & AI koç ekranındaki anahtar alanına Groq anahtarını gir.';
-  if(status==='401'||status==='403')return 'Groq anahtarı geçersiz veya iptal edilmiş. Yeni anahtar oluşturup anahtar alanına gir.';
-  if(status==='429')return 'Groq dakika sınırına takıldı. Birkaç saniye bekleyip tekrar dene.';
-  if(status==='404')return 'Groq modeli bulunamadı. Uygulamayı güncelle.';
-  if(raw.includes('timeout')||raw.includes('abort'))return 'Groq yanıtı gecikti. İnterneti kontrol edip tekrar dene.';
-  if(raw.includes('empty'))return 'Groq boş yanıt döndürdü. Tekrar dene.';
-  if(raw.includes('offline')||raw.includes('failed to fetch')||raw.includes('network')||raw.includes('load failed'))return 'Groq’a ulaşılamadı. İnternet bağlantısını kontrol et; APK sürümünde bağlantı doğrudan Android üzerinden yapılır.';
-  return 'Groq bağlantısı kurulamadı. İnterneti kontrol edip tekrar dene.';
-}
+
 /* Groq'a ödev çıkarımı yaptırmak için mesajlar (JSON yanıt). */
 function composeHomeworkExtraction(text,subjects,today){
   const list=Object.entries(subjects||{}).map(([id,s])=>`${id}: ${s.name}`).join(', ');
@@ -628,6 +663,6 @@ function sanitizeSettings(obj){
   const rate=Number.isFinite(Number(o.rate))?Math.max(0.7,Math.min(1.4,Number(o.rate))):1.12;
   return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy,voice,rate,preferNetwork:o.preferNetwork!==false,voicePack:o.voicePack!==false};
 }
-const api={inSchoolDomain,knowledgeBrief,solveMath,evalExpression,math:fmtNum,speechText,isNotHomework,buildKnowledgeIndex,searchKnowledge,knowledgeAnswer,classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,explainAiError,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
+const api={inSchoolDomain,knowledgeBrief,solveMath,evalExpression,math:fmtNum,speechText,isNotHomework,buildKnowledgeIndex,searchKnowledge,knowledgeAnswer,studyPlan,classifyUtterance,identityAnswer,isQuestionText,looksLikeHomework,composeHomeworkExtraction,parseIntakeResult,nextCallAt,upcomingCalls,scheduleSummary,sanitizeDays,parseTime,formatClock,formatDateTR,dayDiff,dueLabel,norm,homeworkStats,pendingHomework,matchSubject,matchDone,wantsHelp,isGreeting,parseHomeworkUtterance,intakePrompt,dueReminder,buildBriefing,composeMessages,offlineAnswer,sanitizeHomework,validateHomeworkItem,sanitizeSettings,describeHomework,istParts,istDate,istAt,addDaysISO,weekdayOf,nextSchoolDay,SHORT_DAYS,DEFAULT_DAYS};
 if(typeof module!=='undefined')module.exports=api;else root.KampAIcore=api;
 })(typeof window!=='undefined'?window:globalThis);

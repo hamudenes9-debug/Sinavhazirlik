@@ -137,7 +137,12 @@ public final class MainActivity extends Activity {
         clipPlayer = new MediaPlayer();
         final MediaPlayer player = clipPlayer;
         try {
-            android.content.res.AssetFileDescriptor afd = getAssets().openFd("www/voice/" + name + ".mp3");
+            android.content.res.AssetFileDescriptor afd = null;
+            for (String ext : new String[]{".mp3", ".wav"}) {
+                try { afd = getAssets().openFd("www/voice/" + name + ext); break; }
+                catch (Exception ignored) { }
+            }
+            if (afd == null) throw new java.io.FileNotFoundException(name);
             player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
             afd.close();
             player.setOnCompletionListener(mp -> {
@@ -391,7 +396,6 @@ public final class MainActivity extends Activity {
             try{startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,Uri.parse("package:"+getPackageName())));}catch(Exception e){openAppSettings();}
         }
         @JavascriptInterface public void openPDF(String file){MainActivity.this.openPDF(file);}
-        @JavascriptInterface public void aiChat(String payload) { AiChat.request(web, payload); }
         @JavascriptInterface public void playClip(String name) {
             runOnUiThread(() -> {
                 boolean ok = MainActivity.this.playClipInternal(name);

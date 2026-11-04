@@ -6,8 +6,8 @@ android {
         applicationId 'Com.company.sinavhazirlik'
         minSdk 26
         targetSdk 35
-        versionCode 10
-        versionName '1.7.1'
+        versionCode 11
+        versionName '1.8.0'
     }
     signingConfigs {
         /* Sabit imza: yeni APK eskisinin üzerine kurulabilsin (CI'da üretilen rastgele debug anahtarı yerine). */
@@ -24,7 +24,7 @@ android {
         release { minifyEnabled false; signingConfig signingConfigs.stable }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-    androidResources { noCompress 'mp3' }
+    androidResources { noCompress 'mp3', 'wav' }
 }
 dependencies { implementation 'androidx.core:core:1.15.0'
     implementation 'androidx.webkit:webkit:1.12.1' }
