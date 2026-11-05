@@ -2,6 +2,13 @@
 (() => {
 'use strict';
 const AIC = window.KampAIcore;
+/* ai-net.js yüklenemezse koç yalnızca cihazda çalışmaya devam eder. */
+const NET = window.KampNet || {
+  DEFAULT_MODEL: '', FALLBACK_MODELS: [],
+  sanitizeKey: () => '', sanitizeModel: v => String(v || ''), maskKey: v => String(v || ''),
+  needsNetwork: () => false, buildMessages: () => [], testQuestion: () => '',
+  ask: async () => ({ ok: false, error: 'Çevrimiçi beyin yüklenmedi' })
+};
 const HW_KEY = 'sinav-kampi-homework-v1';
 const AI_KEY = 'sinav-kampi-ai-v1';
 const LAST_KEY = 'sinav-kampi-ai-last';
@@ -81,6 +88,47 @@ function speakClip(name, ok, fail) {
   } catch { return false; }
 }
 let knowledgeCache = null;
+let netWarned = false;
+
+/* Çevrimiçi beyin: anahtar ayarlardan ya da derleme sırasında gömülen yapılandırmadan gelir. */
+function bakedConfig() { return (window.KAMP_AI_CONFIG || {}); }
+function effectiveKey() { return (settings.apiKey || NET.sanitizeKey(bakedConfig().openrouterKey) || ''); }
+function keySource() { return settings.apiKey ? 'user' : (NET.sanitizeKey(bakedConfig().openrouterKey) ? 'builtin' : ''); }
+function netModel() { return NET.sanitizeModel(settings.model || bakedConfig().model || ''); }
+function onlineEnabled() { return settings.online !== false && !!effectiveKey(); }
+function hasInternet() { try { return navigator.onLine !== false; } catch { return true; } }
+function examContext() {
+  try {
+    const app = A();
+    if (!app) return [];
+    return app.activeExams().filter(e => app.C.daysBetween(app.C.today(), e.date) >= 0).slice(0, 4).map(e => ({ name: e.name, date: e.date }));
+  } catch { return []; }
+}
+async function askOnline(question, intent) {
+  if (!onlineEnabled() || !hasInternet()) return null;
+  const history = (call?.messages || []).filter(m => m.role === 'user' || m.role === 'assistant').slice(-6);
+  const result = await NET.ask({
+    question,
+    intent,
+    history,
+    key: effectiveKey(),
+    model: netModel(),
+    context: { today: today(), name: name(), exams: examContext(), homework: pendingList().map(h => ({ title: h.title, due: h.due })) }
+  });
+  if (result.ok) return result.text;
+  if (!netWarned) {
+    netWarned = true;
+    try { A()?.toast?.(`Çevrimiçi beyin: ${result.error}. Cihazdaki bilgiyle devam ediyorum.`); } catch {}
+    console.warn('OpenRouter', result.error);
+  }
+  return null;
+}
+function netStatusText() {
+  if (!effectiveKey()) return 'Anahtar yok: koç yalnızca cihazdaki bilgiyle çalışır.';
+  if (settings.online === false) return 'Çevrimiçi beyin kapalı: yalnızca cihazdaki bilgi kullanılıyor.';
+  const source = keySource() === 'builtin' ? 'uygulamayla gelen anahtar' : 'senin girdiğin anahtar';
+  return `Hazır · ${source} · model: ${netModel()}`;
+}
 
 function loadSettings() {
   try { return AIC.sanitizeSettings(JSON.parse(localStorage.getItem(AI_KEY) || 'null') || {}); }
@@ -200,14 +248,27 @@ function renderPage() {
 
       <section class="card card-padding settings-card">
         <h2>Koçun beyni</h2>
-        <p class="ai-copy">Koç tamamen bu cihazda çalışır: internet, hesap veya API anahtarı gerekmez. Ders bilgi bankası, konu özetleri ve soru açıklamalarından cevap üretir; hesap yapar; ödev ve sınavlarını bilir.</p>
+        <p class="ai-copy">Koç önce <strong>cihazdaki bilgi bankasına</strong> bakar: ders notları, PDF özetleri, hesap makinesi, ödev ve sınavların hep cihazda. Cihazdaki bilgi yetmezse ve internet varsa soruyu OpenRouter’daki yapay zekâya iletir.</p>
         <ul class="ai-commands">
           <li><span>“EBOB nasıl bulunur?”</span><small>Bilgi bankasından örnekli yanıt.</small></li>
           <li><span>“12 × 8 kaç eder?”</span><small>Gerçekten hesaplar.</small></li>
           <li><span>“Bana soru sor”</span><small>Test sorusu sorar, cevabını değerlendirir.</small></li>
-          <li><span>“Cebrail’in görevi ne?”</span><small>PDF konu özetlerinden yanıtlar (${(window.KAMP_PDF_KB || []).length} not parçası).</small></li>
+          <li><span>“Cebrail’in görevi ne?”</span><small>Cihazdaki PDF notlarından yanıtlar (${(window.KAMP_PDF_KB || []).length} not parçası).</small></li>
+          <li><span>“Present perfect nedir?”</span><small>Cihazda yoksa çevrimiçi beyin yanıtlar.</small></li>
         </ul>
-        <p class="ai-hint">Hiçbir ses veya metin sunucuya gönderilmez. Koç sürümü 1.10.0.</p>
+        <label class="setting-row">
+          <div><strong>Çevrimiçi beyin (OpenRouter)</strong><p>Cihazdaki bilgi yetmediğinde sorunun metni yapay zekâya gönderilir. Kapalıysa koç yalnızca cihazda çalışır.</p></div>
+          <input type="checkbox" id="ai-online" ${settings.online !== false ? 'checked' : ''}>
+        </label>
+        <label class="form-field"><span>OpenRouter API anahtarı ${keySource() === 'builtin' ? '<em>(uygulamayla geliyor)</em>' : ''}</span><input id="ai-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="${effectiveKey() ? 'Kayıtlı: ' + esc(NET.maskKey(effectiveKey())) + ' — değiştirmek için yaz' : 'sk-or-v1-…'}" value=""></label>
+        <label class="form-field"><span>Model</span><input id="ai-model" maxlength="80" autocomplete="off" spellcheck="false" value="${esc(netModel())}" placeholder="${NET.DEFAULT_MODEL}"></label>
+        <div class="ai-key-actions">
+          <button class="btn btn-white" data-ai="paste-key">${app.icon('file')} Panodan yapıştır</button>
+          <button class="btn btn-white" data-ai="test-online">${app.icon('spark')} Bağlantıyı dene</button>
+          ${keySource() === 'user' ? '<button class="btn btn-white" data-ai="clear-key">Anahtarı sil</button>' : ''}
+        </div>
+        <p class="ai-hint" id="ai-online-hint">${esc(netStatusText())}</p>
+        <p class="ai-hint">Ses kaydı uygulamadan çıkmaz ve saklanmaz; konuşmayı yazıya çeviren Android konuşma servisi Google üzerinden çalışabilir. Çevrimiçi beyin yalnızca sorunun metnini ve ders bağlamını gönderir. Koç sürümü 1.11.0.</p>
       </section>
 
       <section class="card card-padding">
@@ -227,7 +288,7 @@ function renderPage() {
           <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
           <button class="btn btn-white" data-ai="install-voice">Türkçe sesi indir</button>
         </div>
-        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.10.0.</p>
+        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.11.0.</p>
       </section>
 
       <section class="card card-padding">
@@ -635,6 +696,9 @@ async function handleUser(text) {
   if (intent === 'quiz') { startQuiz(); return; }
   if (intent === 'simplify') {
     const last = call.lastAnswer || '';
+    setStatus('Düşünüyor…');
+    const simpler = await askOnline(`Şunu 6. sınıf öğrencisine iki kısa cümleyle, daha basit anlat: ${last}`.slice(0, 500), 'simplify');
+    if (simpler) { speak(simpler); return; }
     const simple = last.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ').trim();
     speak(simple ? 'Kısaca: ' + simple : 'Hangi konuda takıldığını söyle, daha basit anlatayım.');
     return;
@@ -713,11 +777,18 @@ function offlineContext() {
 async function answerChat(text, intent) {
   const ctx = offlineContext();
   const local = AIC.offlineAnswer(text, ctx);
+  let answer = local;
   if (intent === 'question' || intent === 'chat') {
     const knowledge = AIC.knowledgeAnswer(text, ctx);
-    if (knowledge) return knowledge;
+    if (knowledge) answer = knowledge;
   }
-  return local;
+  const need = NET.needsNetwork({ intent, question: text, normalized: AIC.norm(text), localAnswer: answer, online: settings.online !== false });
+  if (need && onlineEnabled() && hasInternet()) {
+    setStatus('Çevrimiçi düşünüyor…');
+    const online = await askOnline(text, intent);
+    if (online) return online;
+  }
+  return answer;
 }
 
 function knowledgeIndex() {
@@ -768,6 +839,47 @@ function onAiClick(btn) {
       settings.days[day] = '';
       saveSettings(); applyNativeSchedule(); A().render();
       A().toast(`${DAY_LABELS[day]} araması kaldırıldı.`);
+      break;
+    }
+    case 'test-online': {
+      if (!effectiveKey()) { A().toast('Önce bir OpenRouter anahtarı ekle.'); break; }
+      A().toast('OpenRouter deneniyor…');
+      NET.ask({
+        question: NET.testQuestion(),
+        intent: 'chat',
+        key: effectiveKey(),
+        model: netModel(),
+        context: { today: today(), name: name(), exams: examContext() }
+      }).then(result => {
+        if (result.ok) A().toast('Çevrimiçi beyin hazır: ' + result.text.slice(0, 90));
+        else A().toast('Bağlantı kurulamadı: ' + result.error);
+      });
+      break;
+    }
+    case 'paste-key': {
+      const save = text => {
+        const key = NET.sanitizeKey(text);
+        if (!key) { A().toast('Panoda geçerli bir OpenRouter anahtarı yok (sk-or-v1-… ile başlamalı).'); return; }
+        settings.apiKey = key;
+        settings.online = true;
+        saveSettings();
+        A().render();
+        A().toast('Anahtar cihaza kaydedildi. “Bağlantıyı dene” ile kontrol edebilirsin.');
+      };
+      const b = bridge();
+      if (b && typeof b.readClipboard === 'function') {
+        try { save(String(b.readClipboard() || '')); break; } catch {}
+      }
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(save).catch(() => A().toast('Pano okunamadı; anahtarı alana yapıştır.'));
+      } else A().toast('Pano okunamadı; anahtarı alana yapıştır.');
+      break;
+    }
+    case 'clear-key': {
+      settings.apiKey = '';
+      saveSettings();
+      A().render();
+      A().toast('Anahtar silindi. Koç cihazdaki bilgiyle çalışıyor.');
       break;
     }
     case 'preview-voice': {
@@ -841,6 +953,17 @@ function install() {
       saveSettings(); A().render();
       A().toast(settings.voicePack ? 'Doğal ses paketi açıldı.' : 'Cihazın ses motoru kullanılacak.');
     }
+    if (e.target.id === 'ai-online') {
+      settings.online = e.target.checked;
+      saveSettings(); A().render();
+      A().toast(settings.online ? 'Çevrimiçi beyin açıldı.' : 'Çevrimiçi beyin kapatıldı; her şey cihazda.');
+    }
+    if (e.target.id === 'ai-model') {
+      const model = NET.sanitizeModel(e.target.value);
+      settings.model = model;
+      saveSettings();
+      A().toast('Model kaydedildi: ' + model);
+    }
     if (e.target.id === 'ai-network-voice') {
       settings.preferNetwork = e.target.checked;
       saveSettings(); applyVoiceConfig(); A().render();
@@ -867,6 +990,23 @@ function install() {
       if (label) label.textContent = settings.rate.toFixed(2) + '×';
       clearTimeout(window.__aiRateTimer);
       window.__aiRateTimer = setTimeout(() => { saveSettings(); applyVoiceConfig(); }, 250);
+      return;
+    }
+    if (e.target.id === 'ai-api-key') {
+      clearTimeout(window.__aiKeyTimer);
+      window.__aiKeyTimer = setTimeout(() => {
+        const typed = String(e.target.value || '').trim();
+        if (!typed) return;
+        const key = NET.sanitizeKey(typed);
+        if (!key) { A().toast('Anahtar biçimi geçersiz. sk-or-v1- ile başlamalı.'); return; }
+        settings.apiKey = key;
+        settings.online = true;
+        saveSettings();
+        const input = $('#ai-api-key');
+        if (input) input.value = '';
+        A().render();
+        A().toast('Anahtar kaydedildi. “Bağlantıyı dene” ile kontrol edebilirsin.');
+      }, 900);
       return;
     }
     if (e.target.id !== 'ai-name') return;
@@ -938,6 +1078,9 @@ window.KampAI = {
     setStatus('Bu cihazda ses çıkışı yok. Yazılı döküm ekranda görünüyor.');
   },
   _syncNative: applyNativeSchedule,
+  _answer: (text, intent = 'question') => answerChat(String(text), intent),
+  _netStatus: () => ({ online: onlineEnabled(), key: keySource(), model: netModel(), text: netStatusText() }),
+  _askOnline: text => askOnline(String(text), 'question'),
   _homework: () => homework,
   _settings: () => settings,
   _plan: () => buildSchedule(),

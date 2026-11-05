@@ -61,6 +61,9 @@ jobs:
         with: {node-version: '22', cache: npm}
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci --no-audit --no-fund && npm test && npm run build
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
       - name: Install Android SDK packages
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -95,8 +98,8 @@ jobs:
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/voice/(intro|who|saved)\.mp3'
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(voice/ring\.wav|kb\.js)'
           sha256sum artifacts/Sinav-Kampi.apk | tee apk-sha256.txt
-          if gh release view v1.10.0 >/dev/null 2>&1; then
-            gh release upload v1.10.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
+          if gh release view v1.11.0 >/dev/null 2>&1; then
+            gh release upload v1.11.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
           else
-            gh release create v1.10.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.10.0 — Temel Dini Bilgiler ve PDF’lerden öğrenen koç" --notes "Temel Dini Bilgiler dersi eklendi: inanç esasları, İslam’ın şartları, abdest ve namaz, oruç ve Ramazan, zekât-sadaka-hac, ahlak. Konu özeti PDF’i 6 bölüme ve 10 soruya çıktı. Kamp koçu artık PDF’lerdeki notlardan öğreniyor: 126 not parçası bilgi bankasına eklendi, ‘Cebrail’in görevi ne’, ‘şedde nedir’, ‘vakfe nedir’ gibi soruları PDF’lerdeki bilgiyle yanıtlıyor. Her şey cihazda; Groq yok. Ayrıntılar: AI-KOC.md."
+            gh release create v1.11.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.11.0 — OpenRouter çevrimiçi beyin" --notes "Koç artık iki katmanlı çalışıyor: önce cihazdaki 154 maddelik bilgi bankası ve 126 PDF not parçası, yetmezse OpenRouter üzerindeki yapay zekâ. Ayarlar > Koç sayfasından anahtar ve model değiştirilebilir, 'Bağlantıyı dene' ile test edilir, 'Çevrimiçi beyin' kapatılınca her şey cihazda kalır. Ses kaydı uygulamadan çıkmaz. Ayrıntılar: AI-KOC.md."
           fi

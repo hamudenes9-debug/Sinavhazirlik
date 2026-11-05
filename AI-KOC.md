@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.10.0** ile koç tamamen **cihazın içinde** çalışır: **154 maddelik 6. sınıf bilgi bankası**, **403 kayıtlık arama dizini** (126’sı PDF notlarından), gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq/API anahtarı tamamen kaldırıldı; hiçbir veri sunucuya gitmiyor.
+Sürüm **1.11.0** ile koç **önce cihazın içinde** çalışır, yetmediğinde isteğe bağlı **OpenRouter** yapay zekâsını kullanır: **154 maddelik 6. sınıf bilgi bankası**, **403 kayıtlık arama dizini** (126’sı PDF notlarından), gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq tamamen kaldırıldı; çevrimiçi beyin kapalıyken hiçbir veri cihazdan çıkmıyor.
 
 ## Akıllı davranış
 
@@ -26,7 +26,20 @@ Koç söyleneni önce **anlar**, sonra kaydeder:
 
 Sohbet cümleleri **üç ayrı katmanda** süzülür: (1) niyet katmanı, (2) ayrıştırılan başlıkların doğrulanması, (3) depolama katmanı (`addHomework`). “Sen kimsin?” gibi bir cümle hiçbir koşulda listeye eklenmez. Engellenen cümlede ekranda “Bu bir sohbet sorusu; ödev olarak kaydetmedim.” bilgisi çıkar.
 
-Anlama ve cevap üretme tamamen **cihazdaki motor** tarafından yapılır; internet veya anahtar gerekmez.
+Anlama ve cevap üretme **önce cihazdaki motor** tarafından yapılır: internet veya anahtar gerekmez. Cihazdaki bilgi yetmezse ve internet varsa soru OpenRouter’a gönderilir.
+
+### Çevrimiçi beyin (OpenRouter)
+
+| Ayar | Ne yapar |
+| --- | --- |
+| Çevrimiçi beyin | Kapatılırsa koç yalnızca cihazda çalışır; hiçbir istek gitmez. |
+| API anahtarı | `sk-or-v1-…` biçiminde. Uygulamayla gelen anahtar kullanılır; Ayarlar’dan kendi anahtarınla değiştirebilirsin. Anahtar ekranda gösterilmez, yalnızca `sk-or-v1…e180` gibi maskelenir. |
+| Model | Varsayılan `google/gemini-2.0-flash-001`; model bulunamazsa sırayla `openai/gpt-4o-mini` ve `anthropic/claude-3.5-haiku` denenir. |
+| Bağlantıyı dene | Tek bir test sorusu gönderir, sonucu bildirir. |
+
+Akış: **cihazdaki cevap → yeterli değilse OpenRouter → hata olursa cihazdaki cevap**. Ödev kaydı, test sorusu, sınav takvimi ve “sen kimsin” gibi işlemler hiçbir zaman ağa çıkmaz; onlar cihazda yapılır.
+
+Gizlilik: ses kaydı uygulamadan çıkmaz ve saklanmaz. Konuşmayı yazıya çeviren Android konuşma servisi Google üzerinden çalışabilir. Çevrimiçi beyin yalnızca **sorunun metnini**, adını, bekleyen ödev başlıklarını ve yaklaşan sınav tarihlerini gönderir; sağlayıcıya `data_collection: deny` gönderilir.
 
 ## Ne yapıyor?
 
@@ -52,7 +65,7 @@ Anlama ve cevap üretme tamamen **cihazdaki motor** tarafından yapılır; inter
 Koç artık **hiçbir dış servise bağlanmıyor**. `1.8.0` ile Groq istemcisi, API anahtarı alanı, proxy ve ilgili izinler tamamen kaldırıldı. Avantajları:
 
 - Anahtar, internet veya hesap gerekmez; uçak modunda da ders sorusuna cevap verir.
-- Ses ve metin cihazdan çıkmaz; gizlilik en üst düzeyde.
+- Çevrimiçi beyin kapatıldığında ses ve metin cihazdan çıkmaz; açıkken yalnızca soru metni ve ders bağlamı gönderilir.
 - Yanıt gecikmesi yok; cevaplar anında gelir.
 
 Nasıl “zeki” oluyor?
@@ -123,7 +136,7 @@ Mikrofon ve konuşma tanıma cihazda yoksa koç yine konuşur ve yazılı dökü
 ## Testler
 
 ```bash
-npm test                 # çekirdek + koç + takvim okuyucu + pdf (55 test)
+npm test                 # çekirdek + koç + takvim + pdf + OpenRouter (63 test)
 npm run test:browser     # masaüstü/mobil, sesli arama, test sorusu, ödev ekleme
 ```
 

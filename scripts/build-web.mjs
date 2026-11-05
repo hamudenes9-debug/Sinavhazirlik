@@ -7,6 +7,20 @@ const pdfEntries=writePdfKb();
 console.log(`pdf-kb: ${pdfEntries} not parçası`);
 await build({entryPoints:['src/cloud.js'],bundle:true,minify:true,format:'iife',target:['chrome90'],outfile:'web/firebase.js',legalComments:'inline'});
 await rm(target,{recursive:true,force:true});await mkdir(target,{recursive:true});await cp('web',target,{recursive:true});
+/* OpenRouter anahtarı depoya yazılmaz: yalnızca derleme anında ortamdan okunur. */
+const openRouterKey=(process.env.OPENROUTER_API_KEY||'').trim();
+const openRouterModel=(process.env.OPENROUTER_MODEL||'').trim();
+const safeKey=/^sk-or-v1-[A-Za-z0-9]{32,120}$/.test(openRouterKey)?openRouterKey:'';
+const safeModel=/^[A-Za-z0-9][A-Za-z0-9._:\/-]{2,80}$/.test(openRouterModel)?openRouterModel:'';
+if(safeKey){
+  await writeFile(`${target}/ai-config.js`,`/* Derleme çıktısı: OPENROUTER_API_KEY ortam değişkeninden yazıldı. */\nwindow.KAMP_AI_CONFIG=${JSON.stringify({openrouterKey:safeKey,...(safeModel?{model:safeModel}:{})})};\n`);
+  console.log(`ai-config: anahtar ortamdan eklendi (${safeKey.slice(0,8)}…${safeKey.slice(-4)})`);
+}else{
+  const fallback=await readFile('web/ai-config.js','utf8');
+  await writeFile(`${target}/ai-config.js`,fallback);
+  const builtin=/sk-or-v1-[A-Za-z0-9]{32,120}/.test(fallback);
+  console.log(builtin?'ai-config: depodaki anahtar kullanıldı':'ai-config: anahtar yok, koç yalnızca cihazda çalışır');
+}
 for(const [font,weights] of [['dm-sans',[400,500,600,700]],['manrope',[500,600,700,800]]]){
  await mkdir(`${target}/fonts`,{recursive:true});
  for(const weight of weights)for(const subset of ['latin','latin-ext']){
@@ -21,6 +35,6 @@ let faces='';for(const [font,family,weights] of [['dm-sans','DM Sans',[400,500,6
 await writeFile(target+'/style.css',faces+css);
 const files=[];async function walk(dir,prefix=''){for(const e of await readdir(dir,{withFileTypes:true})){const p=prefix+e.name;if(e.isDirectory())await walk(join(dir,e.name),p+'/');else if(e.name!=='sw.js')files.push(p);}}
 await walk(target);
-const sw=(await readFile(target+'/sw.js','utf8')).replace('sinav-kampi-v1','sinav-kampi-v1.10.0').replace('const ASSETS=[','const ASSETS=[...'+JSON.stringify(files)+',');
+const sw=(await readFile(target+'/sw.js','utf8')).replace('sinav-kampi-v1','sinav-kampi-v1.11.0').replace('const ASSETS=[','const ASSETS=[...'+JSON.stringify(files)+',');
 await writeFile(target+'/sw.js',sw);
 console.log('Offline web assets and bundled Firebase SDK ready.');

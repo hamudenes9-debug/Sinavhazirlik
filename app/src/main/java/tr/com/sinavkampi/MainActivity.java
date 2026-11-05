@@ -402,6 +402,60 @@ public final class MainActivity extends Activity {
                 js("window.KampAI&&window.KampAI._clipResult(" + JSONObject.quote(name == null ? "" : name) + "," + ok + ")");
             });
         }
+        /* OpenRouter isteği: WebView CORS kurallarına takılmamak için HTTPS çağrısı burada yapılır.
+           Sonuç JavaScript'e window.KampNet._resolve(id, status, body) ile döner. */
+        @JavascriptInterface public void networkChat(String id, String url, String auth, String body) {
+            new Thread(() -> {
+                int status = 0;
+                String text = "";
+                java.net.HttpURLConnection connection = null;
+                try {
+                    connection = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                    connection.setRequestMethod("POST");
+                    connection.setConnectTimeout(15000);
+                    connection.setReadTimeout(25000);
+                    connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                    if (auth != null && !auth.isEmpty()) connection.setRequestProperty("Authorization", "Bearer " + auth);
+                    connection.setRequestProperty("HTTP-Referer", "https://github.com/hamudenes9-debug/Sinavhazirlik");
+                    connection.setRequestProperty("X-Title", "Sinav Kampi");
+                    connection.setDoOutput(true);
+                    byte[] payload = (body == null ? "{}" : body).getBytes("UTF-8");
+                    try (java.io.OutputStream out = connection.getOutputStream()) { out.write(payload); }
+                    status = connection.getResponseCode();
+                    java.io.InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
+                    text = readStream(stream);
+                } catch (Exception e) {
+                    status = 0;
+                    text = e.getClass().getSimpleName() + ": " + (e.getMessage() == null ? "" : e.getMessage());
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
+                final int finalStatus = status;
+                final String finalText = text.length() > 200000 ? text.substring(0, 200000) : text;
+                runOnUiThread(() -> js("window.KampNet&&window.KampNet._resolve(" + JSONObject.quote(id == null ? "" : id) + "," + finalStatus + "," + JSONObject.quote(finalText) + ")"));
+            }, "openrouter-chat").start();
+        }
+        private String readStream(java.io.InputStream stream) throws java.io.IOException {
+            if (stream == null) return "";
+            StringBuilder builder = new StringBuilder();
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(stream, "UTF-8"))) {
+                char[] buffer = new char[4096];
+                int read;
+                while ((read = reader.read(buffer)) != -1) builder.append(buffer, 0, read);
+            }
+            return builder.toString();
+        }
+        /* Panodan anahtar yapıştırmak için: WebView pano erişimini kısıtlar. */
+        @JavascriptInterface public String readClipboard() {
+            try {
+                android.content.ClipboardManager manager = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (manager == null || !manager.hasPrimaryClip()) return "";
+                android.content.ClipData clip = manager.getPrimaryClip();
+                if (clip == null || clip.getItemCount() == 0) return "";
+                CharSequence text = clip.getItemAt(0).coerceToText(this);
+                return text == null ? "" : text.toString().trim();
+            } catch (Exception e) { return ""; }
+        }
         @JavascriptInterface public void stopClip() { runOnUiThread(MainActivity.this::stopClip); }
         @JavascriptInterface public void speak(String text) {
             runOnUiThread(MainActivity.this::stopClip);

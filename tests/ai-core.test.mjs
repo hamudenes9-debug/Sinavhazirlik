@@ -96,7 +96,7 @@ test('homework and settings validation reject junk', () => {
   assert.equal(AI.validateHomeworkItem({ id: 'x', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }), false);
   assert.equal(AI.validateHomeworkItem({ id: 'hw-1', title: '', subject: 'matematik', due: '2026-11-03', done: false }), false);
   assert.deepEqual(AI.sanitizeHomework([{ id: 'hw-1', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }, null]), [{ id: 'hw-1', title: 'Mat', subject: 'matematik', due: '2026-11-03', done: false }]);
-  assert.deepEqual(AI.sanitizeSettings({ enabled: 1, key: ' x ' }), { enabled: true, name: '', days: { 1: '16:00', 2: '15:10', 3: '15:10', 4: '15:10', 5: '15:10', 6: '', 7: '' }, key: 'x', proxy: '', voice: '', rate: 1.12, preferNetwork: true, voicePack: true });
+  assert.deepEqual(AI.sanitizeSettings({ enabled: 1, key: ' x ' }), { enabled: true, name: '', days: { 1: '16:00', 2: '15:10', 3: '15:10', 4: '15:10', 5: '15:10', 6: '', 7: '' }, key: 'x', proxy: '', voice: '', rate: 1.12, preferNetwork: true, voicePack: true, apiKey: '', model: '', online: true });
   assert.equal(AI.sanitizeSettings({ days: { 2: '25:00' } }).days['2'], '15:10');
   assert.equal(AI.sanitizeSettings({ days: { 6: '11:00' } }).days['6'], '11:00');
   assert.equal(AI.sanitizeSettings({ name: '  Ali   Veli ' }).name, 'Ali Veli');
@@ -274,10 +274,13 @@ test('the coach answers small talk like a person', () => {
   assert.match(AI.offlineAnswer('günlerden ne', ctx), /Çarşamba/);
 });
 
-test('Groq is completely gone from the app', async () => {
-  const source = await readFile(new URL('../web/ai.js', import.meta.url), 'utf8');
-  assert.equal(/groq|api\.groq/i.test(source), false, 'ai.js hâlâ Groq içeriyor');
-  assert.equal(fs.existsSync(new URL('../web/ai-config.js', import.meta.url)), false, 'ai-config.js silinmeli');
+test('Groq is completely gone; only OpenRouter remains', async () => {
+  for (const file of ['ai.js', 'ai-core.js', 'ai-net.js', 'ai-config.js']) {
+    const source = await readFile(new URL('../web/' + file, import.meta.url), 'utf8');
+    assert.equal(/groq|api\.groq/i.test(source), false, file + ' hâlâ Groq içeriyor');
+  }
+  const config = await readFile(new URL('../web/ai-config.js', import.meta.url), 'utf8');
+  assert.match(config, /KAMP_AI_CONFIG/);
   assert.equal(fs.existsSync(new URL('../app/src/main/java/tr/com/sinavkampi/AiChat.java', import.meta.url)), false, 'AiChat.java silinmeli');
 });
 

@@ -12,3 +12,6 @@ __pycache__/
 *.jks
 /artifacts/
 /test-results/
+# Derleme sırasında anahtarla üretilir, depoya girmez.
+app/src/main/assets/www/ai-config.js
+.ai-key

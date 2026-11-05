@@ -11,6 +11,20 @@ const bundled=process.env.PLAYWRIGHT_CHROMIUM!=='system';
 const browser=await playwright.launch(bundled?{executablePath:await chromium.executablePath(),args:chromium.args.filter(a=>!['--single-process','--disable-web-security'].includes(a)),headless:true}:{headless:true,channel:'chromium',args:['--no-sandbox']});
 const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});page.setDefaultTimeout(12000);
 const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')console.log('Browser console:',m.text());});page.on('worker',w=>console.log('Service worker started:',w.url()));
+await page.addInitScript(()=>{
+  const realFetch=window.fetch.bind(window);
+  window.__openRouterCalls=[];
+  window.fetch=(input,init)=>{
+    const url=typeof input==='string'?input:String(input&&input.url||'');
+    if(url.includes('openrouter.ai')){
+      const body=init&&typeof init.body==='string'?JSON.parse(init.body):{};
+      window.__openRouterCalls.push({model:body.model,auth:(init.headers&&init.headers.Authorization)||''});
+      const payload={model:body.model,choices:[{message:{content:'Çevrimiçi test cevabı: asit yağmuru, kirli gazların su buharıyla birleşmesidir.'}}]};
+      return Promise.resolve(new Response(JSON.stringify(payload),{status:200,headers:{'Content-Type':'application/json'}}));
+    }
+    return realFetch(input,init);
+  };
+});
 await page.goto('http://127.0.0.1:3000');await page.waitForSelector('.hero');await page.evaluate(()=>document.fonts.ready);
 await page.screenshot({path:'test-results/desktop.png',fullPage:true});
 assert.match(await page.locator('.next-exam h3').innerText(),/Fen Bilimleri|Sosyal Bilgiler|Matematik|Türkçe|İngilizce|Din Kültürü|Takvim tamamlandı/);
@@ -23,7 +37,8 @@ await page.locator('.desktop-nav [data-nav="kutuphane"]').click();await page.wai
 await page.locator('.desktop-nav [data-nav="testler"]').click();await page.waitForSelector('.test-grid');await page.locator('[data-action="start-quiz"][data-id="matematik"]').first().click();await page.locator('[data-action="answer"][data-id="2"]').click();await page.locator('[data-action="check-answer"]').click();assert.match(await page.locator('.quiz-explanation').innerText(),/Doğru/);await page.locator('[data-action="next-question"]').click();assert.match(await page.locator('.quiz-card .eyebrow').innerText(),/SORU 2/);
 for(let i=1;i<12;i++){await page.locator('[data-action="answer"][data-id="0"]').click();await page.locator('[data-action="check-answer"]').click();await page.locator('[data-action="next-question"]').click();}
 assert.match(await page.locator('.result-score').innerText(),/3\s*\/\s*12/);assert.equal(await page.locator('.review-item').count(),9);
-await page.locator('[data-action="quit-quiz"]').click();await page.locator('.settings-link').click();await page.waitForSelector('#reminder-toggle',{state:'attached'});await page.locator('#quiet-toggle + span').click();await page.locator('#quiet-start').fill('21:30');await page.locator('#quiet-start').dispatchEvent('change');assert.equal(await page.locator('[data-action="test-voice"]').count(),1,'ses deneme düğmesi yok');await page.reload();assert.equal(await page.locator('#quiet-start').inputValue(),'21:30');
+await page.locator('[data-action="quit-quiz"]').click();await page.locator('.settings-link').click();await page.waitForSelector('#reminder-toggle',{state:'attached'});await page.locator('#quiet-toggle + span').click();await page.locator('#quiet-start').fill('21:30');await page.locator('#quiet-start').dispatchEvent('change');assert.equal(await page.locator('[data-action="test-voice"]').count(),1,'ses deneme düğmesi yok');
+await page.reload();assert.equal(await page.locator('#quiet-start').inputValue(),'21:30');
 await page.locator('.exam-toggle[data-id="din-1311"] + span').click();await page.reload();assert(!(await page.locator('.exam-toggle[data-id="din-1311"]').isChecked()));await page.locator('.exam-toggle[data-id="din-1311"] + span').click();
 await page.locator('.settings-link').click();await page.waitForSelector('#exam-text');
 await page.locator('#exam-text').fill('Fen Bilimleri 03.11.2026 2. ders\nMüzik 20.11.2026 3. ders\nResim 21.11.2026 2. ders');
@@ -102,6 +117,25 @@ assert.equal(clipStatus.ring, 200, 'zil sesi sunulamadı');
 assert.match(clipStatus.ringType || '', /audio|wav/i, 'zil sesi türü yanlış');
 assert.equal(clipStatus.status, 200, 'ses klibi sunulamadı');
 assert.match(clipStatus.type || '', /audio/, 'mp3 içerik türü yanlış: ' + clipStatus.type);
+await page.goto('http://127.0.0.1:3000/#aiko');await page.waitForSelector('#ai-api-key');
+await page.evaluate(()=>{const raw=localStorage.getItem('sinav-kampi-ai-v1');const s=raw?JSON.parse(raw):{};s.apiKey='sk-or-v1-'+'b'.repeat(64);s.online=true;localStorage.setItem('sinav-kampi-ai-v1',JSON.stringify(s));});
+await page.reload();await page.waitForSelector('#ai-api-key');
+assert.equal(await page.evaluate(()=>document.querySelector('#ai-api-key').value),'','anahtar alanına anahtar yazılmamalı');
+assert.equal(await page.evaluate(()=>document.body.innerText.includes('sk-or-v1-bbbbbbbb')),false,'anahtar maskesiz görünmemeli');
+assert.equal(await page.locator('#ai-online').count(),1,'çevrimiçi beyin anahtarı yok');
+assert.equal(await page.locator('#ai-model').count(),1,'model alanı yok');
+assert.equal(await page.locator('[data-ai="test-online"]').count(),1,'bağlantı testi düğmesi yok');
+const netStatus=await page.evaluate(()=>window.KampAI._netStatus());
+assert.equal(netStatus.online,true,'çevrimiçi beyin hazır olmalı');
+assert.equal(netStatus.key,'user','testte anahtar cihazda kayıtlı olmalı');
+assert.match(await page.locator('#ai-online-hint').innerText(),/Hazır/,'çevrimiçi beyin hazır görünmeli');
+const onlineAnswer=await page.evaluate(()=>window.KampAI._answer('asit yağmuru nedir'));
+assert.match(onlineAnswer,/Çevrimiçi test cevabı/,'cihazda olmayan soru çevrimiçi beyne gitmeli');
+const localOnly=await page.evaluate(()=>window.KampAI._answer('şedde nedir'));
+assert.match(localOnly,/iki kez/,'cihazdaki PDF bilgisi çevrimiçi beyne gitmeden yanıtlanmalı');
+const calls=await page.evaluate(()=>window.__openRouterCalls);
+assert.equal(calls.length,1,'yalnızca bilinmeyen soru için tek istek atılmalı');
+assert.match(calls[0].auth,/^Bearer sk-or-v1-/,'anahtar istek başlığında olmalı');
 const pkgVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 assert.ok((await page.locator('#ai-voice-hint').innerText()).includes(pkgVersion), 'ses kartında sürüm görünmeli');
 assert(await page.locator('#ai-voice-pack').isChecked(), 'doğal ses paketi varsayılan açık olmalı');

@@ -372,7 +372,8 @@ function offlineAnswer(text,ctx){
   }
   if(/saat kac/.test(n))return `Şu an ${formatClock(Date.now())}.`;
   if(/gunlerden ne|hangi gun|bugun gunlerden/.test(n)){
-   const d=new Date(Date.now()+ZONE_OFFSET_MIN*60000);
+   const iso=/^\d{4}-\d{2}-\d{2}$/.test(String(c.today||''))?c.today:null;
+   const d=iso?new Date(Date.parse(iso+'T00:00:00Z')):new Date(Date.now()+ZONE_OFFSET_MIN*60000);
    return `Bugün ${WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}.`;
   }
   if(/hangi dersleri biliyor|hangi dersler|hangi dersleri/.test(n)){
@@ -668,9 +669,9 @@ function knowledgeAnswer(text,ctx){
   return intro+first;
 }
 
-/* Groq/bağlantı hatasını öğrencinin anlayacağı tek cümleye çevirir. */
+/* Bağlantı hatasını öğrencinin anlayacağı tek cümleye çevirir. */
 
-/* Groq'a ödev çıkarımı yaptırmak için mesajlar (JSON yanıt). */
+/* Modelden ödev çıkarımı istemek için mesajlar (JSON yanıt). */
 function composeHomeworkExtraction(text,subjects,today){
   const list=Object.entries(subjects||{}).map(([id,s])=>`${id}: ${s.name}`).join(', ');
   return [
@@ -723,7 +724,9 @@ function sanitizeSettings(obj){
   const name=typeof o.name==='string'?o.name.trim().replace(/\s+/g,' ').slice(0,24):'';
   const voice=typeof o.voice==='string'&&o.voice.length<=120?o.voice:'';
   const rate=Number.isFinite(Number(o.rate))?Math.max(0.7,Math.min(1.4,Number(o.rate))):1.12;
-  return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy,voice,rate,preferNetwork:o.preferNetwork!==false,voicePack:o.voicePack!==false};
+  const apiKey=typeof o.apiKey==='string'&&/^sk-or-v1-[A-Za-z0-9]{32,120}$/.test(o.apiKey.trim())?o.apiKey.trim():'';
+  const model=typeof o.model==='string'&&/^[A-Za-z0-9][A-Za-z0-9._:\/-]{2,80}$/.test(o.model.trim())?o.model.trim():'';
+  return {enabled:!!o.enabled,name,days:sanitizeDays(o.days),key,proxy,voice,rate,preferNetwork:o.preferNetwork!==false,voicePack:o.voicePack!==false,apiKey,model,online:o.online!==false};
 }
 
 /* ---------- Sınav takvimi okuyucu (PDF metni veya yapıştırılan metin) ---------- */
