@@ -33,9 +33,10 @@ Anlama ve cevap üretme **önce cihazdaki motor** tarafından yapılır: interne
 | Ayar | Ne yapar |
 | --- | --- |
 | Çevrimiçi beyin | Kapatılırsa koç yalnızca cihazda çalışır; hiçbir istek gitmez. |
-| API anahtarı | `sk-or-v1-…` biçiminde. Uygulamayla gelen anahtar kullanılır; Ayarlar’dan kendi anahtarınla değiştirebilirsin. Anahtar ekranda gösterilmez, yalnızca `sk-or-v1…e180` gibi maskelenir. |
+| API anahtarı | `sk-or-v1-…` biçiminde. Anahtar depoya yazılmaz. **Ayarlar → Çevrimiçi beyin → Panodan yapıştır** ile cihaza kaydedilir (anahtar alanına yapıştırıp kaydetmek de olur) ya da derleme sırasında `OPENROUTER_API_KEY` ortam değişkeninden/secret’tan gelir. Anahtar ekranda gösterilmez, yalnızca `sk-or-v1…e180` gibi maskelenir. |
 | Model | Varsayılan `google/gemini-2.0-flash-001`; model bulunamazsa sırayla `openai/gpt-4o-mini` ve `anthropic/claude-3.5-haiku` denenir. |
 | Bağlantıyı dene | Tek bir test sorusu gönderir, sonucu bildirir. |
+| Panodan yapıştır | Panodaki `sk-or-v1-…` anahtarını bulup cihaza kaydeder; anahtar yazı olarak ekrana basılmaz. |
 
 Akış: **cihazdaki cevap → yeterli değilse OpenRouter → hata olursa cihazdaki cevap**. Ödev kaydı, test sorusu, sınav takvimi ve “sen kimsin” gibi işlemler hiçbir zaman ağa çıkmaz; onlar cihazda yapılır.
 
@@ -136,7 +137,7 @@ Mikrofon ve konuşma tanıma cihazda yoksa koç yine konuşur ve yazılı dökü
 ## Testler
 
 ```bash
-npm test                 # çekirdek + koç + takvim + pdf + OpenRouter (63 test)
+npm test                 # çekirdek + koç + takvim + pdf + OpenRouter (64 test)
 npm run test:browser     # masaüstü/mobil, sesli arama, test sorusu, ödev ekleme
 ```
 

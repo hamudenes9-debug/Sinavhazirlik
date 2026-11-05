@@ -316,6 +316,16 @@ test('PDF notes are part of the coach brain', () => {
   assert.match(ask('bugün hava nasıl'), /çıkaramadım/);
 });
 
+test('an unknown subject question is admitted even when homework is pending', () => {
+  const { content, kb, pdfKb } = loadContent();
+  const idx = AI.buildKnowledgeIndex({ subjects, quizzes: content.quizzes || {}, kb, pdfKb });
+  const homework = [{ id: 'h1', title: 'Fen özeti', subject: 'fen', due: '2026-11-06' }];
+  const ask = q => AI.offlineAnswer(q, { knowledge: idx, subjects, homework, today: '2026-11-04' });
+  assert.match(ask('asit yağmuru nedir'), /çıkaramadım/, 'bilinmeyen soru ödev listesine dönüşmemeli');
+  assert.match(ask('ödevlerim ne'), /Fen özeti/, 'ödev sorusu hâlâ ödev listesini döndürmeli');
+  assert.doesNotMatch(ask('şedde nedir'), /çıkaramadım/, 'PDF bilgisi varken çevrimiçine gerek yok');
+});
+
 test('Temel Dini Bilgiler content covers faith, worship and morals', () => {
   const { content } = loadContent();
   const data = fs.readFileSync(new URL('../web/data.js', import.meta.url), 'utf8');

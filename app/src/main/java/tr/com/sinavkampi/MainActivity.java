@@ -452,7 +452,7 @@ public final class MainActivity extends Activity {
                 if (manager == null || !manager.hasPrimaryClip()) return "";
                 android.content.ClipData clip = manager.getPrimaryClip();
                 if (clip == null || clip.getItemCount() == 0) return "";
-                CharSequence text = clip.getItemAt(0).coerceToText(this);
+                CharSequence text = clip.getItemAt(0).coerceToText(MainActivity.this);
                 return text == null ? "" : text.toString().trim();
             } catch (Exception e) { return ""; }
         }

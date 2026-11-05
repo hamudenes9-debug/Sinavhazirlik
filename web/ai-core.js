@@ -413,6 +413,7 @@ function offlineAnswer(text,ctx){
   const local=knowledgeAnswer(text,c);
   if(local)return local;
   if(pendingHomework(c.homework).length){
+   if(intent==='question'||intent==='chat')return 'Bunu kendi notlarımdan çıkaramadım. Konuyu biraz daha açık söyle (örnek: “fen, sindirim sistemi”), hemen bakayım.';
    const pending=pendingHomework(c.homework);
    const names=pending.slice(0,3).map(h=>h.title).join(', ');
    return `Bekleyen ${pending.length} ödevin var: ${names}. ${subjectTip(subjects,pending[0].subject)} Hangisiyle başlayalım?`;

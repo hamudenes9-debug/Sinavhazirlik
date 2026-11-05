@@ -791,16 +791,6 @@ async function answerChat(text, intent) {
   return answer;
 }
 
-function knowledgeIndex() {
-  if (knowledgeCache) return knowledgeCache;
-  try { knowledgeCache = AIC.buildKnowledgeIndex({ subjects: subjects(), quizzes: (window.KAMP_CONTENT || {}).quizzes || {}, kb: window.KAMP_KB || [], pdfKb: window.KAMP_PDF_KB || [] }); }
-  catch { knowledgeCache = []; }
-  return knowledgeCache;
-}
-function offlineContext() {
-  return { today: today(), homework, subjects: subjects(), exam: nextExam(), name: name(), knowledge: knowledgeIndex() };
-}
-
 function syncMicButton() {
   const btn = $('#call-mic');
   if (!btn) return;
