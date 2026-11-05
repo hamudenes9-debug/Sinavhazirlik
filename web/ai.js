@@ -788,6 +788,9 @@ async function answerChat(text, intent) {
     const online = await askOnline(text, intent);
     if (online) return online;
   }
+  if (need && settings.online !== false && !effectiveKey()) {
+    return answer + ' Çevrimiçi beyni açmak için Ayarlar > Koç bölümünde “Panodan yapıştır”a bas.';
+  }
   return answer;
 }
 
