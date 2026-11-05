@@ -8,7 +8,7 @@
 - **Uygulama içi bilgi motoru:** konu özetleri ve soru açıklamalarından anahtarsız yanıt (EBOB, bölünebilme, olasılık, kültür, kıtalar…). Ders dışı sorularda uydurmaz.
 - **Çift korumalı ödev kaydı:** soru/sohbet cümlesi model “ödev” dese bile kaydedilmez.
 - **Doğal ses paketi:** koçun sabit cümleleri uygulamayla gelen 10 doğal Türkçe kayıtla okunur (cihaz sesi gerekmez); hız 0.7–1.4, ses seçimi ve “Sesi dene”.
-- **Çevrimiçi beyin (OpenRouter):** cihazdaki motor yetmediğinde soruyu isteğe bağlı olarak OpenRouter’a gönderir; anahtar depoya yazılmaz, Ayarlar’dan “Panodan yapıştır” ile cihaza kaydedilir. Çevrimiçi beyin kapatılırsa hiçbir veri cihazdan çıkmaz.
+- **Çevrimiçi beyin (OpenRouter):** cihazdaki motor yetmediğinde soruyu isteğe bağlı olarak OpenRouter’a gönderir. Anahtar depoya (git’e) yazılmaz; derleme sırasında `OPENROUTER_API_KEY` ya da depodaki `ai-config` taslak sürümünden okunup APK’ya gömülür, uygulamada “Panodan yapıştır” ile değiştirilebilir. Çevrimiçi beyin kapatılırsa hiçbir veri cihazdan çıkmaz.
 - **Sınav takvimi yükle:** Ayarlar’dan PDF seç; koç tarihleri ve dersleri okuyup takvime ekler.
 - **154 maddelik bilgi bankası + hesap makinesi + birim/sözlük:** “EBOB nasıl bulunur”, “hücre nedir”, “12 × 8 kaç eder”, “80’in %25’i”, “3 km kaç m”, “apple ne demek” gibi sorular anahtarsız yanıtlanır.
 - **Test modu:** “bana soru sor” deyince 68 sorudan birini sorar, cevabını değerlendirir.

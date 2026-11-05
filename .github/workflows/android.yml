@@ -53,6 +53,9 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # Taslak "ai-config" sürümünü okuyup anahtarı derlemeye gömmek için gerekli.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
@@ -60,10 +63,37 @@ jobs:
       - uses: actions/setup-node@v5
         with: {node-version: '22', cache: npm}
       - uses: gradle/actions/setup-gradle@v4
-      - run: npm ci --no-audit --no-fund && npm test && npm run build
+      - name: Read the coach configuration
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
+          GH_TOKEN: ${{ github.token }}
+          SECRET_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SECRET_MODEL: ${{ vars.OPENROUTER_MODEL }}
+        run: |
+          set -u
+          key="$SECRET_KEY"
+          model="$SECRET_MODEL"
+          if [ -z "$key" ]; then
+            body=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name == "ai-config") | .body' 2>/dev/null | head -c 4000 || true)
+            key=$(printf '%s' "$body" | grep -o 'sk-or-v1-[A-Za-z0-9]\{32,120\}' | head -n 1 || true)
+            model=$(printf '%s' "$body" | sed -n 's/^OPENROUTER_MODEL=//p' | head -n 1 || true)
+          fi
+          if [ -n "$key" ]; then
+            echo "::add-mask::$key"
+            { echo "OPENROUTER_API_KEY=$key"; } >> "$GITHUB_ENV"
+            echo "ai-config: anahtar hazır (${key:0:8}...${key: -4})"
+          else
+            echo "::warning::OpenRouter anahtarı bulunamadı; koç yalnızca cihazda çalışacak"
+          fi
+          if [ -n "$model" ]; then echo "OPENROUTER_MODEL=$model" >> "$GITHUB_ENV"; fi
+      - run: npm ci --no-audit --no-fund && npm test && npm run build
+      - name: Confirm the coach key is bundled
+        run: |
+          if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+            grep -q 'sk-or-v1-' app/src/main/assets/www/ai-config.js
+            echo "ai-config: anahtar APK varlıklarına gömüldü"
+          else
+            echo "::warning::anahtar gömülmedi; koç yalnızca cihazda çalışır"
+          fi
       - name: Install Android SDK packages
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -97,6 +127,7 @@ jobs:
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(firebase.js|cloud-ui.js|index.html)'
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/voice/(intro|who|saved)\.mp3'
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(voice/ring\.wav|kb\.js)'
+          unzip -p artifacts/Sinav-Kampi.apk assets/www/ai-config.js | grep -q 'sk-or-v1-' && echo "ai-config: APK içinde çevrimiçi beyin anahtarı var" || echo "::warning::APK içinde anahtar yok"
           sha256sum artifacts/Sinav-Kampi.apk | tee apk-sha256.txt
           if gh release view v1.11.0 >/dev/null 2>&1; then
             gh release upload v1.11.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber

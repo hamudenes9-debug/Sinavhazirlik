@@ -33,10 +33,12 @@ Anlama ve cevap üretme **önce cihazdaki motor** tarafından yapılır: interne
 | Ayar | Ne yapar |
 | --- | --- |
 | Çevrimiçi beyin | Kapatılırsa koç yalnızca cihazda çalışır; hiçbir istek gitmez. |
-| API anahtarı | `sk-or-v1-…` biçiminde. Anahtar depoya yazılmaz. **Ayarlar → Çevrimiçi beyin → Panodan yapıştır** ile cihaza kaydedilir (anahtar alanına yapıştırıp kaydetmek de olur) ya da derleme sırasında `OPENROUTER_API_KEY` ortam değişkeninden/secret’tan gelir. Anahtar ekranda gösterilmez, yalnızca `sk-or-v1…e180` gibi maskelenir. |
+| API anahtarı | `sk-or-v1-…` biçiminde. Anahtar **git deposuna yazılmaz** (GitHub gizli anahtar koruması commit’i reddeder). Derleme anahtarı şu sırayla bulur: `OPENROUTER_API_KEY` ortam değişkeni/secret → depodaki **`ai-config` taslak sürümünün** gövdesi. Anahtar APK’nın içine gömülür; uygulamada **Ayarlar → Çevrimiçi beyin → Panodan yapıştır** ile cihazdaki anahtar değiştirilebilir. Anahtar ekranda gösterilmez, yalnızca `sk-or-v1…e180` gibi maskelenir. |
 | Model | Varsayılan `google/gemini-2.0-flash-001`; model bulunamazsa sırayla `openai/gpt-4o-mini` ve `anthropic/claude-3.5-haiku` denenir. |
 | Bağlantıyı dene | Tek bir test sorusu gönderir, sonucu bildirir. |
 | Panodan yapıştır | Panodaki `sk-or-v1-…` anahtarını bulup cihaza kaydeder; anahtar yazı olarak ekrana basılmaz. |
+
+Anahtarı döndürmek için: GitHub’da **Releases → “Koç yapılandırması (taslak — yayınlama)”** kaydını düzenleyip `OPENROUTER_API_KEY=` satırını güncelle, yeni bir derleme başlat. Taslak sürüm **asla yayınlanmamalı**; yayınlanırsa anahtar sayfa herkese açık olur.
 
 Akış: **cihazdaki cevap → yeterli değilse OpenRouter → hata olursa cihazdaki cevap**. Ödev kaydı, test sorusu, sınav takvimi ve “sen kimsin” gibi işlemler hiçbir zaman ağa çıkmaz; onlar cihazda yapılır.
 
