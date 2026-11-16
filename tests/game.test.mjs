@@ -107,7 +107,7 @@ test('tema listesi geçerli ve varsayılan kamp', () => {
 
 test('yeni sayfalar ve betikler sıraya göre bağlanmış', () => {
   const html = read('web/index.html');
-  const order = ['theme.js', 'words.js', 'game.js', 'update.js', 'app.js'];
+  const order = ['theme.js', 'words.js', 'game.js', 'version.js', 'update.js', 'app.js'];
   const positions = order.map(file => html.indexOf(file));
   positions.forEach((position, index) => assert.ok(position > 0, order[index] + ' yüklenmiyor'));
   assert.deepEqual([...positions].sort((a, b) => a - b), positions, 'betik sırası yanlış');
