@@ -33,7 +33,7 @@ await page.screenshot({path:'test-results/desktop.png',fullPage:true});
 assert.match(await page.locator('.next-exam h3').innerText(),/Fen Bilimleri|Sosyal Bilgiler|Matematik|Türkçe|İngilizce|Din Kültürü|Takvim tamamlandı/);
 /* Takvimdeki okul sınavları geçmişte kalırsa plan boşalır; testin tarihe bağlı kalmaması için
    çok ileri tarihli bir deneme sınavı ekliyoruz (uygulamanın kendi kayıt yolunu kullanarak). */
-await page.evaluate(()=>{const app=window.KampApp;const state=app.getState();if(!state.customExams.some(e=>e.id==='test-gelecek')){state.customExams.push({id:'test-gelecek',name:'Deneme sınavı',date:'2099-05-20',period:2,subject:'matematik'});app.save();app.render();}});
+await page.evaluate(()=>{const app=window.KampApp;const state=app.getState();if(!state.customExams.some(e=>e.id==='custom-test-gelecek')){state.customExams.push({id:'custom-test-gelecek',name:'Deneme sınavı',date:'2099-05-20',period:2,subject:'matematik'});app.save();app.render();}});
 await page.waitForSelector('.task-check');
 await page.locator('.task-check').first().click();await page.reload();assert.equal(await page.locator('.task-check').first().getAttribute('aria-pressed'),'true');
 await page.locator('.desktop-nav [data-nav="takvim"]').click();await page.waitForSelector('.calendar-grid');

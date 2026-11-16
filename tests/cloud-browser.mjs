@@ -27,7 +27,7 @@ try{
  await a.page.waitForFunction(()=>!!window.KampCloud.getState().uid);
  assert.equal(await action(a.page,'window.KampCloud.getState().syncEnabled'),false,'login must not upload automatically');
  result=await action(a.page,'window.KampCloud.enableSync(true)');assert(result.ok,result.message);
- await a.page.evaluate(()=>{const app=window.KampApp;const state=app.getState();if(!state.customExams.some(e=>e.id==='test-gelecek')){state.customExams.push({id:'test-gelecek',name:'Deneme sınavı',date:'2099-05-20',period:2,subject:'matematik'});app.save();}});
+ await a.page.evaluate(()=>{const app=window.KampApp;const state=app.getState();if(!state.customExams.some(e=>e.id==='custom-test-gelecek')){state.customExams.push({id:'custom-test-gelecek',name:'Deneme sınavı',date:'2099-05-20',period:2,subject:'matematik'});app.save();}});
  await a.page.locator('.desktop-nav [data-nav="kamp"]').click();await a.page.waitForSelector('.task-check');await a.page.locator('.task-check').first().click();
  result=await action(a.page,'window.KampCloud.syncNow()');assert(result.ok,result.message);
  const local=await a.page.evaluate(()=>JSON.parse(localStorage.getItem('sinav-kampi-state-v1')));assert(Object.values(local.completed).some(Boolean));
