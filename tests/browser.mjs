@@ -32,13 +32,15 @@ await page.goto('http://127.0.0.1:3000');await page.waitForSelector('.hero');awa
 await page.screenshot({path:'test-results/desktop.png',fullPage:true});
 assert.match(await page.locator('.next-exam h3').innerText(),/Fen Bilimleri|Sosyal Bilgiler|Matematik|Türkçe|İngilizce|Din Kültürü|Takvim tamamlandı/);
 /* Takvimdeki okul sınavları geçmişte kalırsa plan boşalır; testin tarihe bağlı kalmaması için
-   çok ileri tarihli bir deneme sınavı ekliyoruz (uygulamanın kendi kayıt yolunu kullanarak). */
-await page.evaluate(()=>{const app=window.KampApp;const state=app.getState();if(!state.customExams.some(e=>e.id==='custom-test-gelecek')){state.customExams.push({id:'custom-test-gelecek',name:'Deneme sınavı',date:'2099-05-20',period:2,subject:'matematik'});app.save();app.render();}});
+   bugün tarihli bir deneme sınavı ekliyoruz (uygulamanın kendi kayıt yolunu kullanarak). */
+const today=await page.evaluate(()=>window.KampCore.today());
+const tomorrow=await page.evaluate(()=>window.KampCore.addDays(window.KampCore.today(),1));
+await page.evaluate((date)=>{const app=window.KampApp;const state=app.getState();if(!state.customExams.some(e=>e.id==='custom-test-gelecek')){state.customExams.push({id:'custom-test-gelecek',name:'Bugünkü deneme',date,period:2,subject:'matematik'});app.save();app.render();}},today);
 await page.waitForSelector('.task-check');
 await page.locator('.task-check').first().click();await page.reload();assert.equal(await page.locator('.task-check').first().getAttribute('aria-pressed'),'true');
 await page.locator('.desktop-nav [data-nav="takvim"]').click();await page.waitForSelector('.calendar-grid');
-await page.locator('[data-date="2026-11-11"]').click();assert.match(await page.locator('.day-detail-title + .exam-list').innerText(),/Matematik/);
-await page.locator('[data-action="add-exam"]').first().click();await page.locator('[name="name"]').fill('Deneme sınavı');await page.locator('[name="date"]').fill('2026-11-15');await page.locator('[name="subject"]').selectOption('matematik');await page.locator('#exam-form button[type="submit"]').click();assert.match(await page.locator('.day-detail-title + .exam-list').innerText(),/Deneme sınavı/);
+await page.locator(`[data-date="${today}"]`).click();assert.match(await page.locator('.day-detail-title + .exam-list').innerText(),/Bugünkü deneme/);
+await page.locator('[data-action="add-exam"]').first().click();await page.locator('[name="name"]').fill('Deneme sınavı');await page.locator('[name="date"]').fill(tomorrow);await page.locator('[name="subject"]').selectOption('matematik');await page.locator('#exam-form button[type="submit"]').click();assert.match(await page.locator('.day-detail-title + .exam-list').innerText(),/Deneme sınavı/);
 await page.locator('.desktop-nav [data-nav="kamp"]').click();await page.waitForSelector('.camp-days');assert((await page.locator('.camp-day').count())>=1);await page.locator('[data-action="timer-toggle"]').click();await page.waitForFunction(()=>document.querySelector('#focus-time')?.textContent!=='25:00',{},{timeout:10000});await page.locator('[data-action="timer-reset"]').click();
 await page.locator('.desktop-nav [data-nav="kutuphane"]').click();await page.waitForSelector('.resource-grid');assert.equal(await page.locator('.resource-card').count(),15);assert.match(await page.locator('.notice').first().innerText(),/bilgi parçası/,'koç PDF notlarından öğrenmeli');await page.locator('#resource-search').fill('Matematik');assert.equal(await page.locator('.resource-card').count(),2);await page.locator('#resource-search').fill('');
 await page.locator('.desktop-nav [data-nav="testler"]').click();await page.waitForSelector('.test-grid');await page.locator('[data-action="start-quiz"][data-id="matematik"]').first().click();await page.locator('[data-action="answer"][data-id="2"]').click();await page.locator('[data-action="check-answer"]').click();assert.match(await page.locator('.quiz-explanation').innerText(),/Doğru/);await page.locator('[data-action="next-question"]').click();assert.match(await page.locator('.quiz-card .eyebrow').innerText(),/SORU 2/);
@@ -48,7 +50,8 @@ await page.locator('[data-action="quit-quiz"]').click();await page.locator('.set
 await page.reload();assert.equal(await page.locator('#quiet-start').inputValue(),'21:30');
 await page.locator('.exam-toggle[data-id="din-1311"] + span').click();await page.reload();assert(!(await page.locator('.exam-toggle[data-id="din-1311"]').isChecked()));await page.locator('.exam-toggle[data-id="din-1311"] + span').click();
 await page.locator('.settings-link').click();await page.waitForSelector('#exam-text');
-await page.locator('#exam-text').fill('Fen Bilimleri 03.11.2026 2. ders\nMüzik 20.11.2026 3. ders\nResim 21.11.2026 2. ders');
+const scheduleText=await page.evaluate(()=>{const C=window.KampCore;const f=iso=>{const [y,m,d]=iso.split('-');return `${d}.${m}.${y}`};return `Fen Bilimleri ${f(C.addDays(C.today(),-5))} 2. ders\nMüzik ${f(C.addDays(C.today(),3))} 3. ders\nResim ${f(C.addDays(C.today(),4))} 2. ders`;});
+await page.locator('#exam-text').fill(scheduleText);
 await page.locator('[data-action="analyze-schedule"]').click();await page.waitForSelector('.import-item');
 assert.equal(await page.locator('.import-item').count(),2,'geçmiş tarih atlanmalı, iki yeni sınav bulunmalı');
 await page.locator('[data-action="import-schedule"]').click();await page.waitForSelector('.calendar-grid');
