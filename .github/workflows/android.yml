@@ -127,10 +127,24 @@ jobs:
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(firebase.js|cloud-ui.js|index.html)'
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/voice/(intro|who|saved)\.mp3'
           unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(voice/ring\.wav|kb\.js)'
+          unzip -l artifacts/Sinav-Kampi.apk | grep -E 'assets/www/(game\.js|words\.js|theme\.js|update\.js|version\.js)'
           unzip -p artifacts/Sinav-Kampi.apk assets/www/ai-config.js | grep -q 'sk-or-v1-' && echo "ai-config: APK içinde çevrimiçi beyin anahtarı var" || echo "::warning::APK içinde anahtar yok"
           sha256sum artifacts/Sinav-Kampi.apk | tee apk-sha256.txt
-          if gh release view v1.11.0 >/dev/null 2>&1; then
-            gh release upload v1.11.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
+          NOTES=$(cat <<'EOF'
+          **Otomatik güncelleme:** Uygulama her açılışta GitHub'daki en son sürümü kontrol eder. Yeni sürüm varsa üstte "Güncelle" şeridi çıkar; indirme ve kurulum Android'in onayıyla yapılır.
+
+          **Kelime Oyunu geldi:** Her turda 10 soru. Karışık, anlamı bul, kelimeyi bul ve eş anlamlı modları; seri bonusu, puan ve rekor takibi. Tümü çevrimdışı çalışır.
+
+          **Renk teması:** Kamp, Okyanus, Gün batımı, Lavanta ve Gece (koyu) temaları. Ayarlar > Renk teması ya da üst çubuktaki ay düğmesi.
+
+          **Arayüz tazelemesi:** Daha yumuşak kartlar, canlı vurgular, hızlı geçişler; ana sayfada "Kelime Oyunu geldi" duyurusu ve tek dokunuşla oyuna giriş.
+
+          Ayarlar > Sürüm ve güncellemeler bölümünden elle kontrol de edebilirsin. Güncelleme yalnızca APK'yı indirir; çalışma kaydın cihazda kalır.
+          EOF
+          )
+          if gh release view v1.12.0 >/dev/null 2>&1; then
+            gh release upload v1.12.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --clobber
+            gh release edit v1.12.0 --notes "$NOTES"
           else
-            gh release create v1.11.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.11.0 — OpenRouter çevrimiçi beyin" --notes "Koç artık iki katmanlı çalışıyor: önce cihazdaki 154 maddelik bilgi bankası ve 126 PDF not parçası, yetmezse OpenRouter üzerindeki yapay zekâ. Ayarlar > Koç sayfasından anahtar ve model değiştirilebilir, 'Bağlantıyı dene' ile test edilir, 'Çevrimiçi beyin' kapatılınca her şey cihazda kalır. Ses kaydı uygulamadan çıkmaz. Ayrıntılar: AI-KOC.md."
+            gh release create v1.12.0 artifacts/Sinav-Kampi.apk apk-sha256.txt --target "$GITHUB_SHA" --title "Sınav Kampı v1.12.0 — Kelime Oyunu, temalar ve otomatik güncelleme" --notes "$NOTES"
           fi

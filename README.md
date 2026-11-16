@@ -2,8 +2,13 @@
 
 6. sınıf sınav hazırlık uygulaması. Türkiye saatiyle kişisel sınav takvimi, 12 günlük kamp, görev takibi, 25 dakikalık odak sayacı, 68 soruluk açıklamalı testler, 15 çevrimdışı PDF ve **ödev için okul çıkışı arayan sesli yapay zekâ koçu** içerir.
 
-## Sürüm 1.11.0
+## Sürüm 1.12.0
 
+- **Otomatik güncelleme:** Uygulama her açılışta GitHub’daki en son sürümü kontrol eder. Yeni sürüm varsa üstte “Güncelle” şeridi çıkar; APK indirilir ve Android’in kurulum ekranı açılır. Ayarlar > Sürüm ve güncellemeler bölümünden elle de kontrol edilebilir.
+- **Kelime Oyunu:** 10 soruluk turlar; karışık, anlamı bul, kelimeyi bul ve eş anlamlı modları; seri bonusu, puan ve rekor. 110+ kelimelik sözlük, tamamen çevrimdışı.
+- **Renk temaları:** Kamp, Okyanus, Gün batımı, Lavanta ve Gece (koyu). Ayarlar’dan ya da üst çubuktaki ay düğmesiyle; seçim cihazda saklanır.
+- **Duyuru:** Ana sayfada “Kelime Oyunu geldi” kartı ve tek dokunuşla **Hemen oyna** düğmesi.
+- **Arayüz tazelemesi:** Yumuşak kartlar, canlı vurgular, hızlı geçişler ve mobil menüde Oyun sekmesi.
 - **Kamp Koçu:** günlük çıkış saatine göre arama (Pzt 16:00, diğer günler 15:10 gibi), sesli ödev sorma/kaydetme ve teslimden bir gün önce hatırlatma.
 - **Uygulama içi bilgi motoru:** konu özetleri ve soru açıklamalarından anahtarsız yanıt (EBOB, bölünebilme, olasılık, kültür, kıtalar…). Ders dışı sorularda uydurmaz.
 - **Çift korumalı ödev kaydı:** soru/sohbet cümlesi model “ödev” dese bile kaydedilmez.

@@ -1,6 +1,6 @@
 # Kamp Koçu — ödev listesi ve okul çıkışı araması
 
-Sürüm **1.11.0** ile koç **önce cihazın içinde** çalışır, yetmediğinde isteğe bağlı **OpenRouter** yapay zekâsını kullanır: **154 maddelik 6. sınıf bilgi bankası**, **403 kayıtlık arama dizini** (126’sı PDF notlarından), gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq tamamen kaldırıldı; çevrimiçi beyin kapalıyken hiçbir veri cihazdan çıkmıyor.
+Sürüm **1.12.0** ile koç **önce cihazın içinde** çalışır, yetmediğinde isteğe bağlı **OpenRouter** yapay zekâsını kullanır: **154 maddelik 6. sınıf bilgi bankası**, **403 kayıtlık arama dizini** (126’sı PDF notlarından), gerçek hesap yapan matematik modülü ve **test soran** bir koç. Yazma kaldırıldı, arama **yalnızca sesle** yürüyor ve koç seni ararken **zil sesi** çalıyor. Groq tamamen kaldırıldı; çevrimiçi beyin kapalıyken hiçbir veri cihazdan çıkmıyor.
 
 ## Akıllı davranış
 
@@ -139,8 +139,15 @@ Mikrofon ve konuşma tanıma cihazda yoksa koç yine konuşur ve yazılı dökü
 ## Testler
 
 ```bash
-npm test                 # çekirdek + koç + takvim + pdf + OpenRouter (64 test)
+npm test                 # çekirdek + koç + takvim + pdf + OpenRouter + oyun/tema/güncelleme (74 test)
 npm run test:browser     # masaüstü/mobil, sesli arama, test sorusu, ödev ekleme
 ```
 
 Tarayıcı testi yazma alanının kaldırıldığını, zil sesinin yüklendiğini, “Sen kimsin?” sorusunun ödev olarak kaydedilmediğini, “bana soru sor” test akışını ve **PDF/metin ile sınav takvimi ekleme** akışını doğrular.
+
+## Uygulama geneli yenilikler (1.12.0)
+
+- **Kelime Oyunu** (`web/words.js`, `web/game.js`): 6. sınıf düzeyinde 110+ kelime; anlamı bul, kelimeyi bul ve eş anlamlı modları. Her tur 10 soru, dört seçenek, seri bonusu (10 → 20 puan). Rekor ve doğruluk cihazda saklanır; ağ gerekmez.
+- **Renk temaları** (`web/theme.js`): Kamp, Okyanus, Gün batımı, Lavanta ve Gece. Tema `data-theme` özniteliğiyle uygulanır, sayfa açılmadan önce okunur (flash yok) ve `meta theme-color` güncellenir.
+- **Otomatik güncelleme** (`web/update.js` + `MainActivity` köprüsü): Açılışta `releases/latest` kontrol edilir. `AndroidBridge.httpGet` CORS’u aşar; `AndroidBridge.downloadUpdate` APK’yı önbelleğe indirip FileProvider ile kurulum ekranını açar. İzin yoksa Android’in “bilinmeyen kaynak” ekranına yönlendirir. Sürüm karşılaştırması sayısaldır (1.9 < 1.10).
+- **Duyuru:** `KampWordGame.announcement()` ana sayfada gösterilir; “Sonra” seçimi cihazda saklanır.

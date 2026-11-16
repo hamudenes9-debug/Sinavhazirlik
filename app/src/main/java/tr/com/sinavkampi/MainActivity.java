@@ -354,6 +354,74 @@ public final class MainActivity extends Activity {
         return host.equals("sinavkam.firebaseapp.com") || host.equals("accounts.google.com") || host.equals("accounts.google.com.tr") || host.equals("github.com") || host.equals("api.github.com") || host.endsWith(".googleapis.com") || host.endsWith(".gstatic.com");
     }
     private static boolean validPdf(String file) { return file!=null && file.matches("[a-z0-9-]+\\.pdf"); }
+    /* GitHub sürümündeki APK'yı indirir ve Android kurulum ekranını açar. */
+    private void downloadUpdate(String url, String version) {
+        if (url == null || !url.startsWith("https://")) { message("Güncelleme adresi geçersiz."); return; }
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            js("window.KampUpdate&&window.KampUpdate._finish('Kurulum izni gerekiyor: açılan ekranda Sınav Kampı’na izin ver, sonra Güncelle’ye yeniden bas.')");
+            message("Kurulum izni gerekiyor: açılan ekranda Sınav Kampı’na izin ver.");
+            try { startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()))); }
+            catch (Exception e) { try { startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()))); } catch (Exception ignored) { } }
+            return;
+        }
+        final String safeVersion = String.valueOf(version == null ? "" : version).replaceAll("[^0-9A-Za-z._-]", "");
+        new Thread(() -> {
+            java.net.HttpURLConnection connection = null;
+            File target = null;
+            try {
+                File dir = new File(getCacheDir(), "updates");
+                if (!dir.exists() && !dir.mkdirs()) throw new Exception("dir");
+                File[] old = dir.listFiles();
+                if (old != null) for (File file : old) { if (!file.delete()) file.deleteOnExit(); }
+                target = new File(dir, "sinav-kampi-" + (safeVersion.isEmpty() ? "yeni" : safeVersion) + ".apk");
+                connection = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(30000);
+                connection.setInstanceFollowRedirects(true);
+                connection.setRequestProperty("User-Agent", "SinavKampi-Android");
+                int status = connection.getResponseCode();
+                if (status < 200 || status >= 300) throw new Exception("http " + status);
+                long total = connection.getContentLengthLong();
+                try (InputStream in = connection.getInputStream(); OutputStream out = new FileOutputStream(target)) {
+                    byte[] buffer = new byte[16384];
+                    long done = 0;
+                    int read, lastPct = -10;
+                    while ((read = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, read);
+                        done += read;
+                        if (total > 0) {
+                            int pct = (int) (done * 100 / total);
+                            if (pct >= lastPct + 10) {
+                                lastPct = pct;
+                                final int shown = pct;
+                                runOnUiThread(() -> js("window.KampUpdate&&window.KampUpdate._progress(''," + shown + ",'Güncelleme indiriliyor: %" + shown + "')"));
+                            }
+                        }
+                    }
+                }
+                if (target.length() < 500000) throw new Exception("small");
+                final File apk = target;
+                target = null;
+                runOnUiThread(() -> installApk(apk));
+            } catch (Exception e) {
+                if (target != null && target.exists() && !target.delete()) target.deleteOnExit();
+                runOnUiThread(() -> { message("Güncelleme indirilemedi. İnterneti kontrol edip yeniden dene."); js("window.KampUpdate&&window.KampUpdate._finish('İndirme başarısız oldu. İnterneti kontrol edip yeniden dene.')"); });
+            } finally { if (connection != null) connection.disconnect(); }
+        }, "apk-update").start();
+    }
+    private void installApk(File apk) {
+        try {
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", apk);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            js("window.KampUpdate&&window.KampUpdate._finish('Kurulum ekranı açıldı. Devam etmek için Kur’a bas.')");
+        } catch (Exception e) {
+            message("Kurulum ekranı açılamadı. APK’yı GitHub sürümlerinden indirebilirsin.");
+            js("window.KampUpdate&&window.KampUpdate._finish('Kurulum ekranı açılamadı; APK’yı GitHub sürümlerinden indirebilirsin.')");
+        }
+    }
     private void openPDF(String file) {
         if(!validPdf(file))return;
         try(InputStream test=getAssets().open("www/pdfs/"+file)) {
@@ -445,6 +513,37 @@ public final class MainActivity extends Activity {
             }
             return builder.toString();
         }
+        /* Sürüm kontrolü ve APK indirme (GitHub Releases): WebView CORS kurallarına takılmamak için burada yapılır. */
+        @JavascriptInterface public String getVersion() {
+            try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return ""; }
+        }
+        @JavascriptInterface public void httpGet(String id, String url) {
+            new Thread(() -> {
+                int status = 0;
+                String text = "";
+                java.net.HttpURLConnection connection = null;
+                try {
+                    if (url == null || !url.startsWith("https://api.github.com/")) { finishGet(id, 0, ""); return; }
+                    connection = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(10000);
+                    connection.setReadTimeout(14000);
+                    connection.setInstanceFollowRedirects(true);
+                    connection.setRequestProperty("Accept", "application/vnd.github+json");
+                    connection.setRequestProperty("User-Agent", "SinavKampi-Android");
+                    status = connection.getResponseCode();
+                    java.io.InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
+                    text = readStream(stream);
+                    if (text.length() > 200000) text = text.substring(0, 200000);
+                } catch (Exception e) { status = 0; text = ""; }
+                if (connection != null) connection.disconnect();
+                finishGet(id, status, text);
+            }, "github-version").start();
+        }
+        private void finishGet(String id, int status, String text) {
+            runOnUiThread(() -> js("window.KampUpdate&&window.KampUpdate._resolve(" + JSONObject.quote(id == null ? "" : id) + "," + status + "," + JSONObject.quote(text) + ")"));
+        }
+        @JavascriptInterface public void downloadUpdate(String url, String version) { MainActivity.this.downloadUpdate(url, version); }
         /* Panodan anahtar yapıştırmak için: WebView pano erişimini kısıtlar. */
         @JavascriptInterface public String readClipboard() {
             try {

@@ -268,7 +268,7 @@ function renderPage() {
           ${keySource() === 'user' ? '<button class="btn btn-white" data-ai="clear-key">Anahtarı sil</button>' : ''}
         </div>
         <p class="ai-hint" id="ai-online-hint">${esc(netStatusText())}</p>
-        <p class="ai-hint">Ses kaydı uygulamadan çıkmaz ve saklanmaz; konuşmayı yazıya çeviren Android konuşma servisi Google üzerinden çalışabilir. Çevrimiçi beyin yalnızca sorunun metnini ve ders bağlamını gönderir. Koç sürümü 1.11.0.</p>
+        <p class="ai-hint">Ses kaydı uygulamadan çıkmaz ve saklanmaz; konuşmayı yazıya çeviren Android konuşma servisi Google üzerinden çalışabilir. Çevrimiçi beyin yalnızca sorunun metnini ve ders bağlamını gönderir. Koç sürümü 1.12.0.</p>
       </section>
 
       <section class="card card-padding">
@@ -288,7 +288,7 @@ function renderPage() {
           <button class="btn btn-primary" data-ai="preview-voice">${app.icon('volume')} Sesi dene</button>
           <button class="btn btn-white" data-ai="install-voice">Türkçe sesi indir</button>
         </div>
-        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.11.0.</p>
+        <p class="ai-hint" id="ai-voice-hint">Doğal ses paketi kapalıysa telefonun Türkçe sesi kullanılır: Google Konuşma Hizmetleri ve Türkçe ses paketi en iyi sonucu verir. Koç sürümü 1.12.0.</p>
       </section>
 
       <section class="card card-padding">

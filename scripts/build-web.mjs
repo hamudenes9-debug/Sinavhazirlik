@@ -21,6 +21,9 @@ if(safeKey){
   const builtin=/sk-or-v1-[A-Za-z0-9]{32,120}/.test(fallback);
   console.log(builtin?'ai-config: depodaki anahtar kullanıldı':'ai-config: anahtar yok, koç yalnızca cihazda çalışır');
 }
+const pkg=JSON.parse(await readFile('package.json','utf8'));
+await writeFile(`${target}/version.js`,`/* Derleme çıktısı: sürüm package.json dosyasından yazıldı. */\nwindow.KAMP_VERSION=${JSON.stringify(pkg.version)};\n`);
+console.log(`version: ${pkg.version}`);
 for(const [font,weights] of [['dm-sans',[400,500,600,700]],['manrope',[500,600,700,800]]]){
  await mkdir(`${target}/fonts`,{recursive:true});
  for(const weight of weights)for(const subset of ['latin','latin-ext']){
@@ -35,6 +38,6 @@ let faces='';for(const [font,family,weights] of [['dm-sans','DM Sans',[400,500,6
 await writeFile(target+'/style.css',faces+css);
 const files=[];async function walk(dir,prefix=''){for(const e of await readdir(dir,{withFileTypes:true})){const p=prefix+e.name;if(e.isDirectory())await walk(join(dir,e.name),p+'/');else if(e.name!=='sw.js')files.push(p);}}
 await walk(target);
-const sw=(await readFile(target+'/sw.js','utf8')).replace('sinav-kampi-v1','sinav-kampi-v1.11.0').replace('const ASSETS=[','const ASSETS=[...'+JSON.stringify(files)+',');
+const sw=(await readFile(target+'/sw.js','utf8')).replace("'sinav-kampi-v1'",`'sinav-kampi-v${pkg.version}'`).replace('const ASSETS=[','const ASSETS=[...'+JSON.stringify(files)+',');
 await writeFile(target+'/sw.js',sw);
 console.log('Offline web assets and bundled Firebase SDK ready.');

@@ -16,6 +16,9 @@ await page.addInitScript(()=>{
   window.__openRouterCalls=[];
   window.fetch=(input,init)=>{
     const url=typeof input==='string'?input:String(input&&input.url||'');
+    if(url.includes('api.github.com')){
+      return Promise.resolve(new Response(JSON.stringify({message:'Not Found'}),{status:404,headers:{'Content-Type':'application/json'}}));
+    }
     if(url.includes('openrouter.ai')){
       const body=init&&typeof init.body==='string'?JSON.parse(init.body):{};
       window.__openRouterCalls.push({model:body.model,auth:(init.headers&&init.headers.Authorization)||''});
@@ -48,7 +51,7 @@ await page.locator('[data-action="import-schedule"]').click();await page.waitFor
 assert.match(await page.locator('.day-detail-title + .exam-list').innerText(),/Müzik/);
 await page.setViewportSize({width:390,height:844});await page.goto('http://127.0.0.1:3000/#bugun');await page.waitForSelector('.hero');await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:'test-results/mobile.png',fullPage:true});
 assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'mobile horizontal overflow');
-for(const p of ['takvim','kamp','kutuphane','testler','ayarlar','bulut','aiko']){await page.goto('http://127.0.0.1:3000/#'+p);await page.waitForTimeout(100);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'overflow '+p);}
+for(const p of ['takvim','kamp','kutuphane','testler','oyun','ayarlar','bulut','aiko']){await page.goto('http://127.0.0.1:3000/#'+p);await page.waitForTimeout(100);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'overflow '+p);}
 let cached=0;
 if(bundled){console.log('Service worker activation is checked on stock Chromium in CI; bundled Lambda Chromium does not activate workers.');}
 else{
@@ -142,5 +145,25 @@ assert(await page.locator('#ai-voice-pack').isChecked(), 'doğal ses paketi vars
 const plan=await page.evaluate(()=>window.KampAI._plan());
 const intake=plan.find(ev=>ev.kind==='intake');assert(intake,'intake call scheduled');assert.match(intake.text,/hangi ödevleri verdiler/);
 await page.screenshot({path:'test-results/aiko.png',fullPage:true});
+await page.goto('http://127.0.0.1:3000/#bugun');await page.waitForSelector('.announce-card');
+assert.match(await page.locator('.announce-card h2').innerText(),/Kelime Oyunu geldi/,'duyuru ana sayfada görünmeli');
+await page.locator('.announce-play').click();await page.waitForSelector('.word-prompt');
+assert.match(await page.locator('#breadcrumb-page').innerText(),/KELİME OYUNU/,'oyun sayfası açılmalı');
+const wordCount=await page.locator('.word-option').count();assert.equal(wordCount,4,'dört seçenek olmalı');
+await page.screenshot({path:'test-results/oyun.png',fullPage:true});
+await page.locator('.word-option').first().click();await page.waitForSelector('.word-feedback');
+assert.match(await page.locator('.word-feedback').innerText(),/Doğru|Doğru cevap/,'cevap sonrası geri bildirim gelmeli');
+await page.locator('[data-word="next"]').click();
+assert.match(await page.locator('.word-topbar .word-tag').innerText(),/SORU 2/, 'sonraki soruya geçilmeli');
+await page.goto('http://127.0.0.1:3000/#ayarlar');await page.waitForSelector('[data-theme-pick="okyanus"]');
+await page.locator('[data-theme-pick="okyanus"]').click();await page.waitForTimeout(200);
+assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'okyanus','tema uygulanmalı');
+await page.reload();await page.waitForSelector('[data-theme-pick="okyanus"]');
+assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'okyanus','tema yeniden açılışta korunmalı');
+await page.screenshot({path:'test-results/tema.png',fullPage:true});
+await page.locator('[data-theme-pick="kamp"]').click();await page.waitForTimeout(150);
+assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'kamp');
+assert.equal(await page.locator('#update-settings').count(),1,'güncelleme kartı ayarlarda olmalı');
+assert.match(await page.locator('#update-settings').innerText(),/v1\.12\.0/,'ayarlarda sürüm görünmeli');
 assert.deepEqual(errors,[]);console.log('PASS: desktop + 390px mobile, navigation, tasks persistence, calendar/custom exam, timer, PDF filters, 12-question quiz, settings, elective toggle, offline precache ('+cached+' assets), no JS errors.');
 await browser.close();testServer?.kill();
